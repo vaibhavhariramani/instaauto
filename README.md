@@ -6,6 +6,20 @@ built on the official Meta Graph API, Instagram Messaging API, and Instagram Web
 > Comment **"send me"** on a Reel → InstaAuto automatically sends:
 > _"Hey 👋 Thanks for commenting! Here is the guide you requested. https://your-link.com"_
 
+**Live app:** [instaautomation-1da00.web.app](https://instaautomation-1da00.web.app)
+
+---
+
+## Screenshots
+
+| Landing | Login |
+| --- | --- |
+| ![Landing page](docs/screenshots/landing.png) | ![Login page](docs/screenshots/login.png) |
+
+| Automations | Analytics |
+| --- | --- |
+| ![Automations list](docs/screenshots/automations.png) | ![Analytics dashboard](docs/screenshots/analytics.png) |
+
 ---
 
 ## Stack
@@ -148,7 +162,20 @@ Until these are set, billing routes respond `503` with a clear message instead o
 
 ---
 
-## Deploying to Firebase
+## CI/CD
+
+`.github/workflows/ci.yml` runs on every push/PR: install → build shared package → lint →
+typecheck → Prisma generate/migrate against an ephemeral Postgres → test → build. On pushes to
+`main` that pass, a second `deploy` job applies Prisma migrations against the production
+database, builds the frontend, and deploys Hosting + Functions to
+[instaautomation-1da00.web.app](https://instaautomation-1da00.web.app) using a dedicated
+`github-actions-deploy` GCP service account (scoped to Firebase Hosting/Functions/Cloud Run/
+Artifact Registry — no broader project access) whose key is stored only as the
+`FIREBASE_SERVICE_ACCOUNT` GitHub Actions secret. Production env values live in the
+`FUNCTIONS_ENV_PRODUCTION` and `WEB_ENV_PRODUCTION` secrets and are written to the (gitignored)
+`.env` files the build expects right before building/deploying.
+
+## Deploying to Firebase manually
 
 ```bash
 npm install -g firebase-tools
