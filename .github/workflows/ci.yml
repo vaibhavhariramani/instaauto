@@ -103,10 +103,11 @@ jobs:
           WEB_ENV: ${{ secrets.WEB_ENV_PRODUCTION }}
 
       - name: Apply database migrations
+        # Values (e.g. DATABASE_URL) can contain unescaped shell metacharacters like `&`, so
+        # pull just the two vars migrate needs instead of `source`-ing the whole dotenv file.
         run: |
-          set -a
-          source apps/functions/.env.instaautomation-1da00
-          set +a
+          export DATABASE_URL=$(grep -m1 '^DATABASE_URL=' apps/functions/.env.instaautomation-1da00 | cut -d= -f2-)
+          export DIRECT_URL=$(grep -m1 '^DIRECT_URL=' apps/functions/.env.instaautomation-1da00 | cut -d= -f2-)
           npm run prisma:generate -w apps/functions
           npm run prisma:deploy -w apps/functions
 
