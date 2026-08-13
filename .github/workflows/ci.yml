@@ -94,9 +94,14 @@ jobs:
 
       # Firebase Functions (2nd gen) bakes its runtime env from these dotenv files at deploy
       # time, and Vite bakes VITE_* into the built bundle — both need to exist before building.
+      # `src/index.ts` also does a bare `import 'dotenv/config'`, which only auto-loads plain
+      # `.env` (not `.env.<project>`) — Firebase's local "analyze source" step spawns the
+      # built function to introspect it before deploying, so without a plain `.env` present
+      # too, that spawn fails config validation and the deploy never gets past analysis.
       - name: Write production env files
         run: |
           printf '%s\n' "$FUNCTIONS_ENV" > apps/functions/.env.instaautomation-1da00
+          cp apps/functions/.env.instaautomation-1da00 apps/functions/.env
           printf '%s\n' "$WEB_ENV" > apps/web/.env
         env:
           FUNCTIONS_ENV: ${{ secrets.FUNCTIONS_ENV_PRODUCTION }}
