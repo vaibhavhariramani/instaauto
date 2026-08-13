@@ -64,17 +64,54 @@ jobs:
       - name: Build
         run: npm run build
 
-  # Uncomment once you've added FIREBASE_TOKEN (or a service-account JSON) as a repo secret.
-  # deploy:
-  #   needs: lint-typecheck-test-build
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with: { node-version: '20', cache: 'npm' }
-  #     - run: npm ci
-  #     - run: npm run build
-  #     - run: npx firebase-tools deploy --only hosting,functions --token "$FIREBASE_TOKEN"
-  #       env:
-  #         FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+  deploy:
+    needs: lint-typecheck-test-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Firebase Functions (2nd gen) bakes its runtime env from these dotenv files at deploy
+      # time, and Vite bakes VITE_* into the built bundle — both need to exist before building.
+      - name: Write production env files
+        run: |
+          printf '%s\n' "$FUNCTIONS_ENV" > apps/functions/.env.instaautomation-1da00
+          printf '%s\n' "$WEB_ENV" > apps/web/.env
+        env:
+          FUNCTIONS_ENV: ${{ secrets.FUNCTIONS_ENV_PRODUCTION }}
+          WEB_ENV: ${{ secrets.WEB_ENV_PRODUCTION }}
+
+      - name: Apply database migrations
+        run: |
+          set -a
+          source apps/functions/.env.instaautomation-1da00
+          set +a
+          npm run prisma:generate -w apps/functions
+          npm run prisma:deploy -w apps/functions
+
+      - name: Build shared package and frontend
+        run: |
+          npm run build -w packages/shared
+          npm run build -w apps/web
+
+      - name: Write deploy service account key
+        run: printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/gcp-key.json"
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy to Firebase (Hosting + Functions)
+        run: npx firebase-tools deploy --only hosting,functions --project instaautomation-1da00 --non-interactive
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
+
+      - name: Clean up service account key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/gcp-key.json"
