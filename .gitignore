@@ -31,6 +31,8 @@ apps/functions/prisma/*.db
 .vite/
 .turbo/
 
+.claude/scheduled_tasks.lock
+
 # One-off local/maintenance scripts — not part of the app
 apps/functions/backfill*.mjs
 apps/functions/delete_bad_replies.mjs
