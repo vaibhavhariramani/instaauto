@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-typecheck-test-build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://instaauto:instaauto@localhost:5432/instaauto?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-please-override-0000000000
+      JWT_REFRESH_SECRET: ci-refresh-secret-please-override-000000000
+      ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+      GOOGLE_CLIENT_ID: ci-google-client-id
+      INSTAGRAM_MOCK_MODE: 'true'
+      FRONTEND_URL: http://localhost:5173
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: instaauto
+          POSTGRES_PASSWORD: instaauto
+          POSTGRES_DB: instaauto
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U instaauto"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build shared package
+        run: npm run build -w packages/shared
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate -w apps/functions
+
+      - name: Run migrations
+        run: npm run prisma:deploy -w apps/functions
+
+      - name: Test
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+
+  # Uncomment once you've added FIREBASE_TOKEN (or a service-account JSON) as a repo secret.
+  # deploy:
+  #   needs: lint-typecheck-test-build
+  #   if: github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with: { node-version: '20', cache: 'npm' }
+  #     - run: npm ci
+  #     - run: npm run build
+  #     - run: npx firebase-tools deploy --only hosting,functions --token "$FIREBASE_TOKEN"
+  #       env:
+  #         FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

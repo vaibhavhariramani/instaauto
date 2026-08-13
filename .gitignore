@@ -1,0 +1,37 @@
+node_modules/
+dist/
+build/
+apps/functions/lib/
+*.tgz
+
+# Env files — every variant except the committed template
+.env
+.env.*
+!.env.example
+
+# Credentials / secrets that should never be committed
+credentials.txt
+*.pem
+*.key
+serviceAccountKey*.json
+*firebase-adminsdk*.json
+
+*.log
+npm-debug.log*
+.DS_Store
+coverage/
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+.firebaserc.local
+apps/functions/prisma/*.db
+.vscode/*
+!.vscode/extensions.json
+*.tsbuildinfo
+.vite/
+.turbo/
+
+# One-off local/maintenance scripts — not part of the app
+apps/functions/backfill*.mjs
+apps/functions/delete_bad_replies.mjs
+apps/functions/scratch-*.ts

@@ -1,0 +1,374 @@
+// InstaAuto — Prisma schema
+// Target: Postgres (serverless-friendly, e.g. Neon/Supabase). See README for connection notes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+enum SubscriptionPlan {
+  STARTER
+  PRO
+  BUSINESS
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  NONE
+}
+
+enum InstagramAccountStatus {
+  CONNECTED
+  DISCONNECTED
+  EXPIRED
+  ERROR
+}
+
+enum MatchType {
+  EXACT
+  CONTAINS
+  ANY_KEYWORD
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  FAILED
+  RETRYING
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum TemplateCategory {
+  FREE_GUIDE
+  COURSE_LINK
+  DISCOUNT_CODE
+  CONSULTATION
+  LEAD_MAGNET
+  CUSTOM
+}
+
+enum NotificationType {
+  AUTOMATION_STARTED
+  INSTAGRAM_DISCONNECTED
+  DM_FAILED
+  DM_SENT
+  WEBHOOK_RECEIVED
+  KEYWORD_MATCHED
+}
+
+enum WebhookSource {
+  META
+  STRIPE
+}
+
+// ─── Core models ─────────────────────────────────────────────────────────
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String
+  avatarUrl          String?
+  googleId           String?  @unique
+  passwordHash       String?
+  timezone           String   @default("UTC")
+  theme              Theme    @default(SYSTEM)
+  onboardingCompleted Boolean @default(false)
+
+  emailOnDmFailed    Boolean  @default(true)
+  emailOnDisconnect  Boolean  @default(true)
+  emailWeeklyDigest  Boolean  @default(false)
+
+  stripeCustomerId              String?             @unique
+  subscriptionPlan              SubscriptionPlan     @default(STARTER)
+  subscriptionStatus            SubscriptionStatus   @default(NONE)
+  subscriptionCurrentPeriodEnd  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  instagramAccounts InstagramAccount[]
+  automations       Automation[]
+  templates         Template[]
+  messages          Message[]
+  sessions          Session[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  analyticsDaily    AnalyticsDaily[]
+
+  @@index([email])
+}
+
+model InstagramAccount {
+  id                    String                  @id @default(cuid())
+  userId                String
+  user                  User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  instagramBusinessId   String                  @unique
+  facebookPageId        String
+  username              String
+  name                  String
+  profilePictureUrl     String?
+  followersCount        Int                     @default(0)
+
+  accessTokenEncrypted  String
+  tokenExpiresAt        DateTime?
+
+  status                InstagramAccountStatus  @default(CONNECTED)
+  connectedAt           DateTime                @default(now())
+  lastSyncedAt          DateTime?
+  disconnectedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  automations Automation[]
+  messages    Message[]
+  conversations Conversation[]
+
+  @@index([userId])
+}
+
+model Conversation {
+  id                    String   @id @default(cuid())
+  instagramAccountId    String
+  instagramAccount      InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  participantIgUserId   String
+  participantUsername   String
+
+  lastMessageAt         DateTime
+  lastMessagePreview    String?
+  lastMessageDirection  MessageDirection?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  directMessages DirectMessage[]
+
+  @@unique([instagramAccountId, participantIgUserId])
+  @@index([instagramAccountId, lastMessageAt])
+}
+
+model DirectMessage {
+  id                   String   @id @default(cuid())
+  conversationId       String
+  conversation         Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  direction            MessageDirection
+  content              String
+  externalMessageId    String?  @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model Automation {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  instagramAccountId   String
+  instagramAccount     InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  name                 String
+  reelId               String
+  reelThumbnailUrl     String?
+  reelPermalink        String?
+  reelCaption          String?
+
+  triggerKeywords      String[]
+  matchType            MatchType @default(CONTAINS)
+  replyMessage         String
+  templateId           String?
+  template             Template? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  publicReplyEnabled   Boolean  @default(false)
+  publicReplyMessage   String?
+
+  dmOncePerUser        Boolean  @default(true)
+  ignoreCreatorComments Boolean @default(true)
+  isActive             Boolean  @default(true)
+
+  totalTriggers        Int      @default(0)
+  totalDMsSent         Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments Comment[]
+  messages Message[]
+
+  @@index([userId])
+  @@index([instagramAccountId, reelId])
+}
+
+model Template {
+  id         String            @id @default(cuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name       String
+  category   TemplateCategory  @default(CUSTOM)
+  content    String
+  isFavorite Boolean           @default(false)
+  usageCount Int               @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  automations Automation[]
+
+  @@index([userId])
+}
+
+model Comment {
+  id                    String   @id @default(cuid())
+  automationId          String
+  automation            Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  instagramCommentId    String   @unique
+  commenterIgUserId     String
+  commenterUsername     String
+  text                  String
+  matchedKeyword        String?
+  isCreatorComment      Boolean  @default(false)
+  isDuplicate           Boolean  @default(false)
+  processedAt           DateTime?
+
+  createdAt DateTime @default(now())
+
+  messages Message[]
+
+  @@index([automationId])
+  @@index([commenterIgUserId])
+}
+
+model Message {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  automationId         String
+  automation           Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  commentId            String?
+  comment              Comment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  instagramAccountId   String
+  instagramAccount     InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  recipientIgUserId    String
+  recipientUsername    String
+  content              String
+  status               MessageStatus @default(PENDING)
+  errorMessage         String?
+  retryCount           Int      @default(0)
+  nextRetryAt          DateTime?
+
+  sentAt      DateTime?
+  deliveredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([automationId])
+  @@index([recipientIgUserId])
+}
+
+model AnalyticsDaily {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date              DateTime @db.Date
+
+  commentsDetected  Int      @default(0)
+  dmsSent           Int      @default(0)
+  dmsFailed         Int      @default(0)
+  uniqueUsersReached Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  metadata  Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+}
+
+model WebhookLog {
+  id             String        @id @default(cuid())
+  source         WebhookSource
+  eventType      String
+  payload        Json
+  signatureValid Boolean
+  processed      Boolean       @default(false)
+  error          String?
+
+  createdAt DateTime @default(now())
+
+  @@index([source, createdAt])
+}
+
+model Session {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash  String    @unique
+  userAgent         String?
+  ip                String?
+  expiresAt         DateTime
+  revokedAt         DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action    String
+  metadata  Json?
+  ip        String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

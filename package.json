@@ -1,0 +1,37 @@
+{
+  "name": "instaauto",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Instagram comment-to-DM automation SaaS",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "predev": "npm run build -w packages/shared",
+    "dev": "concurrently -n web,api -c blue,magenta \"npm run dev -w apps/web\" \"npm run dev -w apps/functions\"",
+    "build": "npm run build -w packages/shared && npm run build -w apps/web && npm run build -w apps/functions",
+    "lint": "npm run lint -w apps/web && npm run lint -w apps/functions",
+    "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/functions",
+    "test": "npm run test -w apps/web && npm run test -w apps/functions",
+    "format": "prettier --write \"apps/**/src/**/*.{ts,tsx}\" \"packages/**/src/**/*.ts\"",
+    "prisma:generate": "npm run prisma:generate -w apps/functions",
+    "prisma:migrate": "npm run prisma:migrate -w apps/functions",
+    "prisma:seed": "npm run prisma:seed -w apps/functions",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write"
+    ]
+  }
+}
