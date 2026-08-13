@@ -40,11 +40,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      # apps/functions depends on @instaauto/shared via a packed tarball (Firebase Functions
+      # deploy can't resolve npm workspace symlinks once the function is packaged standalone),
+      # so that tarball has to exist in apps/functions/ before `npm ci` can resolve the tree.
+      - name: Bootstrap @instaauto/shared tarball
+        run: |
+          npm install --workspace=packages/shared --no-audit --no-fund --ignore-scripts
+          npm run build -w packages/shared
+          npm pack --pack-destination apps/functions -w packages/shared
+
       - name: Install dependencies
         run: npm ci
-
-      - name: Build shared package
-        run: npm run build -w packages/shared
 
       - name: Lint
         run: npm run lint
@@ -75,6 +81,12 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+
+      - name: Bootstrap @instaauto/shared tarball
+        run: |
+          npm install --workspace=packages/shared --no-audit --no-fund --ignore-scripts
+          npm run build -w packages/shared
+          npm pack --pack-destination apps/functions -w packages/shared
 
       - name: Install dependencies
         run: npm ci
