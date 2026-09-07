@@ -39,7 +39,17 @@ async function issueSession(user: User, meta: SessionMeta) {
 }
 
 export async function loginWithGoogle(idToken: string, meta: SessionMeta) {
-  const ticket = await googleClient.verifyIdToken({ idToken, audience: config.GOOGLE_CLIENT_ID });
+  let ticket;
+  try {
+    ticket = await googleClient.verifyIdToken({ idToken, audience: config.GOOGLE_CLIENT_ID });
+  } catch (err) {
+    // Wrong/expired token, or the token's audience doesn't match this server's
+    // GOOGLE_CLIENT_ID (e.g. backend and mobile client IDs are in different
+    // GCP projects) - surface as a clear 401 instead of an opaque 500.
+    throw ApiError.unauthorized(
+      `Invalid Google credential: ${err instanceof Error ? err.message : 'verification failed'}`,
+    );
+  }
   const payload = ticket.getPayload();
   if (!payload?.email || !payload.sub) {
     throw ApiError.unauthorized('Invalid Google credential');
@@ -148,10 +158,12 @@ export async function refreshSession(refreshToken: string, meta: SessionMeta) {
 export async function logout(refreshToken: string): Promise<void> {
   try {
     const payload = verifyRefreshToken(refreshToken);
-    await prisma.session.update({
-      where: { id: payload.sessionId },
-      data: { revokedAt: new Date() },
-    }).catch(() => undefined);
+    await prisma.session
+      .update({
+        where: { id: payload.sessionId },
+        data: { revokedAt: new Date() },
+      })
+      .catch(() => undefined);
   } catch {
     // Already invalid/expired — nothing to revoke.
   }
