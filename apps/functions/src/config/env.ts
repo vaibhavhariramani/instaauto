@@ -12,9 +12,7 @@ const envSchema = z.object({
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 chars'),
-  ENCRYPTION_KEY: z
-    .string()
-    .length(64, 'ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
+  ENCRYPTION_KEY: z.string().length(64, 'ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
 
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   COOKIE_DOMAIN: z.string().optional(),
@@ -22,6 +20,11 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1, 'GOOGLE_CLIENT_ID is required'),
 
   INSTAGRAM_MOCK_MODE: boolFromString,
+
+  // Selects which data-access implementation the repository layer uses. 'postgres' (via Prisma)
+  // is the only wired-up backend today; 'firestore' is scaffolding for a future parallel
+  // implementation and has no effect yet.
+  DB_BACKEND: z.enum(['postgres', 'firestore']).default('postgres'),
 
   META_APP_ID: z.string().optional(),
   META_APP_SECRET: z.string().optional(),
@@ -61,5 +64,7 @@ if (!metaConfigured) {
   );
 }
 if (!stripeConfigured) {
-  console.warn('[config] Stripe keys are not set — billing routes will return 503 until configured.');
+  console.warn(
+    '[config] Stripe keys are not set — billing routes will return 503 until configured.',
+  );
 }
