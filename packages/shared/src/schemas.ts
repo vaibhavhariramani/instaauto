@@ -125,6 +125,15 @@ export const createCheckoutSessionSchema = z.object({
 });
 export type CreateCheckoutSessionInput = z.infer<typeof createCheckoutSessionSchema>;
 
+export const iceBreakerSchema = z.object({
+  instagramAccountId: z.string().min(1, 'Select an Instagram account'),
+  question: z.string().trim().min(1, 'Question is required').max(80, 'Question is too long'),
+  response: z.string().trim().min(1, 'Response is required').max(500, 'Response is too long'),
+});
+export type IceBreakerInput = z.infer<typeof iceBreakerSchema>;
+export const updateIceBreakerSchema = iceBreakerSchema.partial();
+export type UpdateIceBreakerInput = z.infer<typeof updateIceBreakerSchema>;
+
 export const simulateCommentSchema = z.object({
   automationId: z.string().min(1),
   commenterUsername: z.string().trim().min(1).max(60).default('curious_follower'),

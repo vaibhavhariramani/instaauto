@@ -5,6 +5,7 @@ import { logger } from '../lib/logger';
 import { ApiError } from '../middleware/errors';
 import type {
   FacebookPage,
+  IceBreakerInput,
   InstagramProfile,
   InstagramService,
   MessagingParticipant,
@@ -42,13 +43,21 @@ class RealInstagramService implements InstagramService {
     const { data } = await axios.post(IG_OAUTH_TOKEN_URL, body, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     });
-    return { accessToken: data.access_token, expiresIn: data.expires_in ?? 3600, igUserId: String(data.user_id) };
+    return {
+      accessToken: data.access_token,
+      expiresIn: data.expires_in ?? 3600,
+      igUserId: String(data.user_id),
+    };
   }
 
   async getLongLivedToken(shortLivedToken: string): Promise<TokenResult> {
     const { appSecret } = this.requireMetaCreds();
     const { data } = await axios.get(`${IG_GRAPH_OAUTH_BASE_URL}/access_token`, {
-      params: { grant_type: 'ig_exchange_token', client_secret: appSecret, access_token: shortLivedToken },
+      params: {
+        grant_type: 'ig_exchange_token',
+        client_secret: appSecret,
+        access_token: shortLivedToken,
+      },
     });
     return { accessToken: data.access_token, expiresIn: data.expires_in ?? 60 * 24 * 60 * 60 };
   }
@@ -74,7 +83,10 @@ class RealInstagramService implements InstagramService {
     // Query "me" rather than the numeric id path — under direct Instagram Login the token is
     // scoped to exactly one account, and "me" is the reliably-supported self-lookup alias.
     const { data } = await axios.get(`${IG_GRAPH_BASE_URL}/me`, {
-      params: { fields: 'user_id,username,name,profile_picture_url,followers_count', access_token: accessToken },
+      params: {
+        fields: 'user_id,username,name,profile_picture_url,followers_count',
+        access_token: accessToken,
+      },
     });
     // Use the self-lookup's own user_id rather than the caller-supplied one — the id returned by
     // the OAuth token exchange has been observed to NOT match the id Instagram uses as entry.id
@@ -103,13 +115,20 @@ class RealInstagramService implements InstagramService {
     // Reels are mixed in with every other media type in this feed, so a single page of results
     // can easily miss older Reels — follow pagination up to a safety cap.
     type MediaItem = {
-      id: string; media_product_type?: string; thumbnail_url?: string; permalink: string; caption?: string;
-      comments_count?: number; like_count?: number; timestamp: string;
+      id: string;
+      media_product_type?: string;
+      thumbnail_url?: string;
+      permalink: string;
+      caption?: string;
+      comments_count?: number;
+      like_count?: number;
+      timestamp: string;
     };
     const allMedia: MediaItem[] = [];
     let url = `${IG_GRAPH_BASE_URL}/me/media`;
     let params: Record<string, string | number> | undefined = {
-      fields: 'id,media_type,media_product_type,thumbnail_url,permalink,caption,comments_count,like_count,timestamp',
+      fields:
+        'id,media_type,media_product_type,thumbnail_url,permalink,caption,comments_count,like_count,timestamp',
       access_token: accessToken,
       limit: 50,
     };
@@ -139,7 +158,11 @@ class RealInstagramService implements InstagramService {
    * single "all comments" endpoint, so this walks the most recent media items and their comment
    * edges, then merges and sorts client-side.
    */
-  async getRecentComments(_igUserId: string, accessToken: string, limit = 20): Promise<RecentComment[]> {
+  async getRecentComments(
+    _igUserId: string,
+    accessToken: string,
+    limit = 20,
+  ): Promise<RecentComment[]> {
     const { data: mediaData } = await axios.get(`${IG_GRAPH_BASE_URL}/me/media`, {
       params: {
         fields: 'id,permalink,thumbnail_url,media_url,comments_count',
@@ -162,13 +185,21 @@ class RealInstagramService implements InstagramService {
         .map(async (media) => {
           try {
             const { data } = await axios.get(`${IG_GRAPH_BASE_URL}/${media.id}/comments`, {
-              params: { fields: 'id,text,username,timestamp,from', access_token: accessToken, limit: 25 },
+              params: {
+                fields: 'id,text,username,timestamp,from',
+                access_token: accessToken,
+                limit: 25,
+              },
             });
             // The Graph API only populates the top-level `username` field for the connected
             // account's own comments — every other commenter's comment omits it entirely, even
             // though it's requested. `from.username` is populated for all commenters, so prefer it.
             const comments = (data.data ?? []) as Array<{
-              id: string; text: string; username?: string; timestamp: string; from?: { username?: string };
+              id: string;
+              text: string;
+              username?: string;
+              timestamp: string;
+              from?: { username?: string };
             }>;
             return comments.map((c) => ({
               id: c.id,
@@ -180,7 +211,10 @@ class RealInstagramService implements InstagramService {
               mediaThumbnailUrl: media.thumbnail_url ?? media.media_url ?? '',
             }));
           } catch (err) {
-            logger.warn({ err: axios.isAxiosError(err) ? err.response?.data : err, mediaId: media.id }, 'Failed to fetch comments for media');
+            logger.warn(
+              { err: axios.isAxiosError(err) ? err.response?.data : err, mediaId: media.id },
+              'Failed to fetch comments for media',
+            );
             return [];
           }
         }),
@@ -199,7 +233,11 @@ class RealInstagramService implements InstagramService {
    * problem but is really just the wrong endpoint. Under Instagram Login, private replies are
    * sent via POST /me/messages with the comment id nested in a JSON `recipient` object.
    */
-  async sendPrivateReply(commentId: string, message: string, accessToken: string): Promise<SendReplyResult> {
+  async sendPrivateReply(
+    commentId: string,
+    message: string,
+    accessToken: string,
+  ): Promise<SendReplyResult> {
     try {
       const { data } = await axios.post(
         `${IG_GRAPH_BASE_URL}/me/messages`,
@@ -208,9 +246,13 @@ class RealInstagramService implements InstagramService {
       );
       return { externalMessageId: data.message_id ?? data.id ?? 'unknown' };
     } catch (err) {
-      const detail = axios.isAxiosError(err) ? err.response?.data?.error?.message : (err as Error).message;
+      const detail = axios.isAxiosError(err)
+        ? err.response?.data?.error?.message
+        : (err as Error).message;
       logger.error({ err: detail, commentId }, 'Instagram private reply failed');
-      throw ApiError.badRequest(`Instagram rejected the private reply: ${detail ?? 'unknown error'}`);
+      throw ApiError.badRequest(
+        `Instagram rejected the private reply: ${detail ?? 'unknown error'}`,
+      );
     }
   }
 
@@ -218,17 +260,55 @@ class RealInstagramService implements InstagramService {
    * Posts a public reply visible under the original comment — distinct from the private DM
    * sent via sendPrivateReply. Uses the comment moderation "replies" endpoint.
    */
-  async replyToComment(commentId: string, message: string, accessToken: string): Promise<SendReplyResult> {
+  async replyToComment(
+    commentId: string,
+    message: string,
+    accessToken: string,
+  ): Promise<SendReplyResult> {
     try {
       const { data } = await axios.post(`${IG_GRAPH_BASE_URL}/${commentId}/replies`, null, {
         params: { message, access_token: accessToken },
       });
       return { externalMessageId: data.id ?? 'unknown' };
     } catch (err) {
-      const detail = axios.isAxiosError(err) ? err.response?.data?.error?.message : (err as Error).message;
+      const detail = axios.isAxiosError(err)
+        ? err.response?.data?.error?.message
+        : (err as Error).message;
       logger.error({ err: detail, commentId }, 'Instagram public comment reply failed');
-      throw ApiError.badRequest(`Instagram rejected the public reply: ${detail ?? 'unknown error'}`);
+      throw ApiError.badRequest(
+        `Instagram rejected the public reply: ${detail ?? 'unknown error'}`,
+      );
     }
+  }
+
+  /**
+   * Syncs up to 4 Ice Breaker (conversation-starter) buttons to the connected account. Meta's
+   * public docs describe this endpoint for Page-based Messenger integration
+   * (graph.facebook.com, Page token, `platform=instagram`) — under direct Instagram Login there
+   * is no linked Page, so this follows the same self-lookup style already used for
+   * subscribePageToWebhooks (`me/subscribed_apps`). Unverified against a live Meta app; callers
+   * should treat failures here as best-effort (see iceBreakerService).
+   */
+  async syncIceBreakers(
+    _igUserId: string,
+    accessToken: string,
+    iceBreakers: IceBreakerInput[],
+  ): Promise<void> {
+    await axios.post(
+      `${IG_GRAPH_BASE_URL}/me/messenger_profile`,
+      {
+        ice_breakers: [
+          {
+            call_to_actions: iceBreakers.map((ib) => ({
+              question: ib.question,
+              payload: ib.payload,
+            })),
+            locale: 'default',
+          },
+        ],
+      },
+      { params: { access_token: accessToken } },
+    );
   }
 
   /**
@@ -243,7 +323,10 @@ class RealInstagramService implements InstagramService {
       });
       return { username: data.username ?? 'unknown' };
     } catch (err) {
-      logger.warn({ err: axios.isAxiosError(err) ? err.response?.data : err, igsid }, 'Failed to look up message participant profile');
+      logger.warn(
+        { err: axios.isAxiosError(err) ? err.response?.data : err, igsid },
+        'Failed to look up message participant profile',
+      );
       return { username: 'unknown' };
     }
   }
