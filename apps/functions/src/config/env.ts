@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const boolFromString = z
   .union([z.literal('true'), z.literal('false'), z.undefined()])
-  .transform((v) => (v === undefined ? true : v === 'true'));
+  .transform((v) => v === 'true');
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -12,9 +12,7 @@ const envSchema = z.object({
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 chars'),
-  ENCRYPTION_KEY: z
-    .string()
-    .length(64, 'ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
+  ENCRYPTION_KEY: z.string().length(64, 'ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
 
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   COOKIE_DOMAIN: z.string().optional(),
@@ -61,5 +59,7 @@ if (!metaConfigured) {
   );
 }
 if (!stripeConfigured) {
-  console.warn('[config] Stripe keys are not set — billing routes will return 503 until configured.');
+  console.warn(
+    '[config] Stripe keys are not set — billing routes will return 503 until configured.',
+  );
 }

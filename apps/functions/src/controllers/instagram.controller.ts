@@ -13,41 +13,43 @@ export async function listAccounts(req: AuthedRequest, res: Response): Promise<v
   res.json(accounts.map(toInstagramAccountDto));
 }
 
+function redirectTarget(returnTo: connectService.OAuthReturnTo, connected: boolean): string {
+  const base = returnTo === 'settings' ? '/instagram' : '/onboarding/instagram';
+  return `${config.FRONTEND_URL}${base}?connected=${connected}`;
+}
+
 export async function connect(req: AuthedRequest, res: Response): Promise<void> {
+  const returnTo: connectService.OAuthReturnTo =
+    req.query.returnTo === 'settings' ? 'settings' : 'onboarding';
   if (config.INSTAGRAM_MOCK_MODE) {
     const account = await connectService.connectMockAccount(req.userId);
     res.json({ mode: 'mock', account: toInstagramAccountDto(account) });
     return;
   }
-  const authUrl = connectService.getAuthorizationUrl(req.userId);
+  const authUrl = connectService.getAuthorizationUrl(req.userId, returnTo);
   res.json({ mode: 'redirect', authUrl });
 }
 
 export async function oauthCallback(req: Request, res: Response): Promise<void> {
   const { code, state } = req.query as unknown as InstagramOAuthCallbackInput;
+  // Parsed once up front (outside the try) so a failure during token exchange still redirects
+  // back to whichever page initiated the connect, instead of always bouncing to onboarding.
+  let returnTo: connectService.OAuthReturnTo = 'onboarding';
   try {
+    returnTo = connectService.verifyOAuthState(state).returnTo;
     await connectService.handleOAuthCallback(code, state);
-    res.redirect(`${config.FRONTEND_URL}/onboarding/instagram?connected=true`);
+    res.redirect(redirectTarget(returnTo, true));
   } catch (err) {
-    const detail = (err as { response?: { data?: unknown } })?.response?.data ?? (err as Error)?.message;
+    const detail =
+      (err as { response?: { data?: unknown } })?.response?.data ?? (err as Error)?.message;
     logger.error({ err: detail }, 'Instagram OAuth callback failed');
-    res.redirect(`${config.FRONTEND_URL}/onboarding/instagram?connected=false`);
+    res.redirect(redirectTarget(returnTo, false));
   }
 }
 
 export async function disconnect(req: AuthedRequest, res: Response): Promise<void> {
   await connectService.disconnectAccount(req.userId, req.params.id!);
   res.status(204).send();
-}
-
-export async function reconnect(req: AuthedRequest, res: Response): Promise<void> {
-  if (config.INSTAGRAM_MOCK_MODE) {
-    const account = await connectService.connectMockAccount(req.userId);
-    res.json({ mode: 'mock', account: toInstagramAccountDto(account) });
-    return;
-  }
-  const authUrl = connectService.getAuthorizationUrl(req.userId);
-  res.json({ mode: 'redirect', authUrl });
 }
 
 export async function reels(req: AuthedRequest, res: Response): Promise<void> {
