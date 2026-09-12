@@ -3,6 +3,7 @@ export const queryKeys = {
   instagramAccounts: ['instagram', 'accounts'] as const,
   reels: (accountId: string) => ['instagram', 'reels', accountId] as const,
   recentComments: (accountId: string) => ['instagram', 'comments', accountId] as const,
+  aiReplySettings: (accountId: string) => ['instagram', 'ai-settings', accountId] as const,
   conversations: (accountId: string) => ['conversations', accountId] as const,
   conversationMessages: (accountId: string, conversationId: string) =>
     ['conversations', accountId, conversationId] as const,

@@ -34,7 +34,9 @@ class MockInstagramService implements InstagramService {
 
   async getFacebookPages(): Promise<FacebookPage[]> {
     await wait(150);
-    return [{ id: 'mock-fb-page-100000000000000', name: 'Demo Creator', accessToken: 'mock-page-token' }];
+    return [
+      { id: 'mock-fb-page-100000000000000', name: 'Demo Creator', accessToken: 'mock-page-token' },
+    ];
   }
 
   async getInstagramBusinessAccountId(): Promise<string | null> {
@@ -77,13 +79,37 @@ class MockInstagramService implements InstagramService {
     }));
   }
 
-  async getRecentComments(_igUserId: string, _accessToken: string, limit = 20): Promise<RecentComment[]> {
+  async getRecentComments(
+    _igUserId: string,
+    _accessToken: string,
+    limit = 20,
+  ): Promise<RecentComment[]> {
     await wait(200);
-    const usernames = ['traveler_jane', 'growth.mike', 'sara_builds', 'devon.codes', 'lena_travels'];
-    const texts = ['send me', 'course please!', 'pricing?', 'ebook 🙏', 'love this, send me the guide'];
+    const usernames = [
+      'traveler_jane',
+      'growth.mike',
+      'sara_builds',
+      'devon.codes',
+      'lena_travels',
+    ];
+    const texts = [
+      'send me',
+      'course please!',
+      'pricing?',
+      'ebook 🙏',
+      'love this, send me the guide',
+    ];
     const reels = [
-      { id: 'mock-reel-18000000000000001', permalink: 'https://instagram.com/reel/mock1', thumbnailUrl: 'https://picsum.photos/seed/reel1/400/700' },
-      { id: 'mock-reel-18000000000000002', permalink: 'https://instagram.com/reel/mock2', thumbnailUrl: 'https://picsum.photos/seed/reel2/400/700' },
+      {
+        id: 'mock-reel-18000000000000001',
+        permalink: 'https://instagram.com/reel/mock1',
+        thumbnailUrl: 'https://picsum.photos/seed/reel1/400/700',
+      },
+      {
+        id: 'mock-reel-18000000000000002',
+        permalink: 'https://instagram.com/reel/mock2',
+        thumbnailUrl: 'https://picsum.photos/seed/reel2/400/700',
+      },
     ];
     return Array.from({ length: limit }, (_, i) => {
       const reel = reels[i % reels.length]!;
@@ -116,6 +142,12 @@ class MockInstagramService implements InstagramService {
     await wait(150 + Math.random() * 200);
     logger.info({ commentId, message }, '[mock] Public comment reply posted');
     return { externalMessageId: `mock-reply-${Date.now()}-${Math.round(Math.random() * 1e6)}` };
+  }
+
+  async sendTextDM(recipientIgUserId: string, message: string): Promise<SendReplyResult> {
+    await wait(300 + Math.random() * 400);
+    logger.info({ recipientIgUserId, message }, '[mock] Text DM sent');
+    return { externalMessageId: `mock-dm-${Date.now()}-${Math.round(Math.random() * 1e6)}` };
   }
 
   async getUserProfileByIgsid(): Promise<MessagingParticipant> {

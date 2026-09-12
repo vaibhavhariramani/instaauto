@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useConnectInstagram, useDisconnectInstagram, useInstagramAccounts } from '@/api/instagram';
 import { extractErrorMessage } from '@/api/client';
 import { formatNumber } from '@/utils/format';
+import { AiReplySettingsCard } from '@/components/instagram/AiReplySettingsCard';
 
 export default function InstagramConnectionPage() {
   const { data: accounts, isLoading } = useInstagramAccounts();
@@ -84,16 +85,26 @@ export default function InstagramConnectionPage() {
                   <div>
                     <p className="font-semibold">@{account.username}</p>
                     <p className="text-sm text-muted-foreground">{account.name}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{formatNumber(account.followersCount)} followers</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {formatNumber(account.followersCount)} followers
+                    </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDisconnectId(account.id)}>
+                  <Button
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDisconnectId(account.id)}
+                  >
                     <Unlink className="h-4 w-4" /> Disconnect
                   </Button>
                 </div>
               </CardContent>
             </Card>
+          ))}
+
+          {accounts.map((account) => (
+            <AiReplySettingsCard key={account.id} accountId={account.id} />
           ))}
 
           <Button variant="outline" onClick={handleConnect} loading={connect.isPending}>

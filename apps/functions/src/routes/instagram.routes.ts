@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { instagramOAuthCallbackSchema, replyToCommentSchema } from '@instaauto/shared';
+import {
+  aiReplySettingsSchema,
+  instagramOAuthCallbackSchema,
+  replyToCommentSchema,
+} from '@instaauto/shared';
 import { requireAuth } from '../middleware/auth';
 import { validateRequest } from '../middleware/validateRequest';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -18,6 +22,12 @@ instagramRouter.get('/', asyncHandler(instagramController.listAccounts));
 instagramRouter.post('/connect', asyncHandler(instagramController.connect));
 instagramRouter.post('/:id/disconnect', asyncHandler(instagramController.disconnect));
 instagramRouter.post('/:id/reconnect', asyncHandler(instagramController.reconnect));
+instagramRouter.get('/:id/ai-settings', asyncHandler(instagramController.getAiReplySettings));
+instagramRouter.patch(
+  '/:id/ai-settings',
+  validateRequest({ body: aiReplySettingsSchema }),
+  asyncHandler(instagramController.updateAiReplySettings),
+);
 instagramRouter.get('/:id/reels', asyncHandler(instagramController.reels));
 instagramRouter.get('/:id/comments', asyncHandler(instagramController.recentComments));
 instagramRouter.post(

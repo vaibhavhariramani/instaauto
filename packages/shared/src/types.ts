@@ -173,3 +173,10 @@ export interface AuthTokensDto {
   accessToken: string;
   user: UserDto;
 }
+
+export interface AiReplySettingsDto {
+  instagramAccountId: string;
+  enabled: boolean;
+  personaPrompt: string | null;
+  serverConfigured: boolean;
+}

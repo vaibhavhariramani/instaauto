@@ -12,9 +12,7 @@ const envSchema = z.object({
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 chars'),
-  ENCRYPTION_KEY: z
-    .string()
-    .length(64, 'ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
+  ENCRYPTION_KEY: z.string().length(64, 'ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
 
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   COOKIE_DOMAIN: z.string().optional(),
@@ -36,6 +34,11 @@ const envSchema = z.object({
   STRIPE_PRICE_PRO_YEARLY: z.string().optional(),
   STRIPE_PRICE_BUSINESS_MONTHLY: z.string().optional(),
   STRIPE_PRICE_BUSINESS_YEARLY: z.string().optional(),
+
+  GROQ_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().url().default('https://api.groq.com/openai/v1/chat/completions'),
+  AI_MODEL: z.string().default('llama-3.1-8b-instant'),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -54,6 +57,7 @@ export const metaConfigured = Boolean(
   config.META_APP_ID && config.META_APP_SECRET && config.META_VERIFY_TOKEN,
 );
 export const stripeConfigured = Boolean(config.STRIPE_SECRET_KEY && config.STRIPE_WEBHOOK_SECRET);
+export const aiConfigured = Boolean(config.GROQ_API_KEY || config.OPENAI_API_KEY);
 
 if (!metaConfigured) {
   console.warn(
@@ -61,5 +65,7 @@ if (!metaConfigured) {
   );
 }
 if (!stripeConfigured) {
-  console.warn('[config] Stripe keys are not set — billing routes will return 503 until configured.');
+  console.warn(
+    '[config] Stripe keys are not set — billing routes will return 503 until configured.',
+  );
 }

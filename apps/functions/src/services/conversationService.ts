@@ -1,7 +1,11 @@
 import { InstagramAccountStatus, MessageDirection } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { instagramService } from './instagramService';
+import { generateReply } from './aiReplyService';
 import { ApiError } from '../middleware/errors';
+import { logger } from '../lib/logger';
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface MessagingEventInput {
   instagramAccountId: string; // internal InstagramAccount.id
@@ -32,7 +36,10 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
   const preview = event.content.slice(0, 200);
 
   if (!conversation) {
-    const profile = await instagramService.getUserProfileByIgsid(event.otherPartyIgUserId, event.accessToken);
+    const profile = await instagramService.getUserProfileByIgsid(
+      event.otherPartyIgUserId,
+      event.accessToken,
+    );
     conversation = await prisma.conversation.create({
       data: {
         instagramAccountId: event.instagramAccountId,
@@ -46,7 +53,11 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
   } else {
     conversation = await prisma.conversation.update({
       where: { id: conversation.id },
-      data: { lastMessageAt: event.timestamp, lastMessagePreview: preview, lastMessageDirection: event.direction },
+      data: {
+        lastMessageAt: event.timestamp,
+        lastMessagePreview: preview,
+        lastMessageDirection: event.direction,
+      },
     });
   }
 
@@ -59,6 +70,69 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
       createdAt: event.timestamp,
     },
   });
+
+  if (event.direction === MessageDirection.INBOUND) {
+    await maybeSendAiReply(
+      event.instagramAccountId,
+      conversation.id,
+      event.otherPartyIgUserId,
+      event.content,
+      event.accessToken,
+    );
+  }
+}
+
+/**
+ * Fires an AI-generated fallback reply for an organic inbound DM, when the account has it
+ * enabled. Best-effort: any failure here is logged and swallowed — it must never break inbound
+ * message logging, which has already happened by the time this runs.
+ */
+async function maybeSendAiReply(
+  instagramAccountId: string,
+  conversationId: string,
+  recipientIgUserId: string,
+  incomingText: string,
+  accessToken: string,
+): Promise<void> {
+  try {
+    const settings = await prisma.aiReplySettings.findUnique({ where: { instagramAccountId } });
+    if (!settings?.enabled) return;
+
+    const history = await prisma.directMessage.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+    });
+
+    const replyText = await generateReply({
+      personaPrompt: settings.personaPrompt,
+      history: history.reverse().map((m) => ({ direction: m.direction, content: m.content })),
+      incomingText,
+    });
+    if (!replyText) return;
+
+    await wait(1000 + Math.random() * 1000);
+
+    const result = await instagramService.sendTextDM(recipientIgUserId, replyText, accessToken);
+    await prisma.directMessage.create({
+      data: {
+        conversationId,
+        direction: MessageDirection.OUTBOUND,
+        content: replyText,
+        externalMessageId: result.externalMessageId,
+      },
+    });
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        lastMessageAt: new Date(),
+        lastMessagePreview: replyText.slice(0, 200),
+        lastMessageDirection: MessageDirection.OUTBOUND,
+      },
+    });
+  } catch (err) {
+    logger.warn({ err: (err as Error).message, instagramAccountId }, 'AI auto-reply failed');
+  }
 }
 
 async function requireConnectedAccount(userId: string, instagramAccountId: string) {
