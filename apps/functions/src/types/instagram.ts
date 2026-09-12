@@ -55,8 +55,21 @@ export interface InstagramService {
   getInstagramProfile(igUserId: string, accessToken: string): Promise<InstagramProfile>;
   subscribePageToWebhooks(pageId: string, pageAccessToken: string): Promise<void>;
   getReels(igUserId: string, accessToken: string): Promise<ReelSummary[]>;
-  sendPrivateReply(commentId: string, message: string, accessToken: string): Promise<SendReplyResult>;
+  sendPrivateReply(
+    commentId: string,
+    message: string,
+    accessToken: string,
+  ): Promise<SendReplyResult>;
   replyToComment(commentId: string, message: string, accessToken: string): Promise<SendReplyResult>;
-  getRecentComments(igUserId: string, accessToken: string, limit?: number): Promise<RecentComment[]>;
+  sendTextDM(
+    recipientIgUserId: string,
+    message: string,
+    accessToken: string,
+  ): Promise<SendReplyResult>;
+  getRecentComments(
+    igUserId: string,
+    accessToken: string,
+    limit?: number,
+  ): Promise<RecentComment[]>;
   getUserProfileByIgsid(igsid: string, accessToken: string): Promise<MessagingParticipant>;
 }

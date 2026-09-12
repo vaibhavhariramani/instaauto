@@ -1,10 +1,15 @@
 import type { Request, Response } from 'express';
-import type { InstagramOAuthCallbackInput, ReplyToCommentInput } from '@instaauto/shared';
+import type {
+  AiReplySettingsInput,
+  InstagramOAuthCallbackInput,
+  ReplyToCommentInput,
+} from '@instaauto/shared';
 import { config } from '../config/env';
 import { toInstagramAccountDto } from '../utils/mappers';
 import * as connectService from '../services/instagramConnectService';
 import { listReelsForAccount } from '../services/reelService';
 import * as commentService from '../services/commentService';
+import * as aiReplySettingsService from '../services/aiReplySettingsService';
 import type { AuthedRequest } from '../middleware/auth';
 import { logger } from '../lib/logger';
 
@@ -29,7 +34,8 @@ export async function oauthCallback(req: Request, res: Response): Promise<void> 
     await connectService.handleOAuthCallback(code, state);
     res.redirect(`${config.FRONTEND_URL}/onboarding/instagram?connected=true`);
   } catch (err) {
-    const detail = (err as { response?: { data?: unknown } })?.response?.data ?? (err as Error)?.message;
+    const detail =
+      (err as { response?: { data?: unknown } })?.response?.data ?? (err as Error)?.message;
     logger.error({ err: detail }, 'Instagram OAuth callback failed');
     res.redirect(`${config.FRONTEND_URL}/onboarding/instagram?connected=false`);
   }
@@ -58,6 +64,20 @@ export async function reels(req: AuthedRequest, res: Response): Promise<void> {
 export async function recentComments(req: AuthedRequest, res: Response): Promise<void> {
   const data = await commentService.listRecentCommentsForAccount(req.userId, req.params.id!);
   res.json(data);
+}
+
+export async function getAiReplySettings(req: AuthedRequest, res: Response): Promise<void> {
+  const settings = await aiReplySettingsService.getSettings(req.userId, req.params.id!);
+  res.json(settings);
+}
+
+export async function updateAiReplySettings(req: AuthedRequest, res: Response): Promise<void> {
+  const settings = await aiReplySettingsService.updateSettings(
+    req.userId,
+    req.params.id!,
+    req.body as AiReplySettingsInput,
+  );
+  res.json(settings);
 }
 
 export async function replyToComment(req: AuthedRequest, res: Response): Promise<void> {

@@ -125,9 +125,22 @@ export const createCheckoutSessionSchema = z.object({
 });
 export type CreateCheckoutSessionInput = z.infer<typeof createCheckoutSessionSchema>;
 
+export const aiReplySettingsSchema = z.object({
+  enabled: z.boolean(),
+  personaPrompt: z.string().trim().max(1000, 'Persona is too long').optional().nullable(),
+});
+export type AiReplySettingsInput = z.infer<typeof aiReplySettingsSchema>;
+
 export const simulateCommentSchema = z.object({
   automationId: z.string().min(1),
   commenterUsername: z.string().trim().min(1).max(60).default('curious_follower'),
   commentText: z.string().trim().min(1).max(300),
 });
 export type SimulateCommentInput = z.infer<typeof simulateCommentSchema>;
+
+export const simulateInboundDmSchema = z.object({
+  instagramAccountId: z.string().min(1),
+  senderUsername: z.string().trim().min(1).max(60).default('curious_follower'),
+  messageText: z.string().trim().min(1).max(1000),
+});
+export type SimulateInboundDmInput = z.infer<typeof simulateInboundDmSchema>;
