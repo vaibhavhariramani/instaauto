@@ -46,6 +46,11 @@ export interface MessagingParticipant {
   username: string;
 }
 
+export interface IceBreakerInput {
+  question: string;
+  payload: string;
+}
+
 export interface InstagramService {
   exchangeCodeForToken(code: string, redirectUri: string): Promise<TokenResult>;
   getLongLivedToken(shortLivedToken: string): Promise<TokenResult>;
@@ -55,8 +60,21 @@ export interface InstagramService {
   getInstagramProfile(igUserId: string, accessToken: string): Promise<InstagramProfile>;
   subscribePageToWebhooks(pageId: string, pageAccessToken: string): Promise<void>;
   getReels(igUserId: string, accessToken: string): Promise<ReelSummary[]>;
-  sendPrivateReply(commentId: string, message: string, accessToken: string): Promise<SendReplyResult>;
+  sendPrivateReply(
+    commentId: string,
+    message: string,
+    accessToken: string,
+  ): Promise<SendReplyResult>;
   replyToComment(commentId: string, message: string, accessToken: string): Promise<SendReplyResult>;
-  getRecentComments(igUserId: string, accessToken: string, limit?: number): Promise<RecentComment[]>;
+  getRecentComments(
+    igUserId: string,
+    accessToken: string,
+    limit?: number,
+  ): Promise<RecentComment[]>;
   getUserProfileByIgsid(igsid: string, accessToken: string): Promise<MessagingParticipant>;
+  syncIceBreakers(
+    igUserId: string,
+    accessToken: string,
+    iceBreakers: IceBreakerInput[],
+  ): Promise<void>;
 }

@@ -16,7 +16,9 @@ import { ROUTES } from '@/constants/routes';
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const ProfileSetupPage = lazy(() => import('@/pages/onboarding/ProfileSetupPage'));
-const ConnectInstagramOnboardingPage = lazy(() => import('@/pages/onboarding/ConnectInstagramOnboardingPage'));
+const ConnectInstagramOnboardingPage = lazy(
+  () => import('@/pages/onboarding/ConnectInstagramOnboardingPage'),
+);
 const DashboardOverviewPage = lazy(() => import('@/pages/DashboardOverviewPage'));
 const AutomationsListPage = lazy(() => import('@/pages/AutomationsListPage'));
 const AutomationBuilderPage = lazy(() => import('@/pages/AutomationBuilderPage'));
@@ -25,6 +27,7 @@ const CommentsPage = lazy(() => import('@/pages/CommentsPage'));
 const TemplatesPage = lazy(() => import('@/pages/TemplatesPage'));
 const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
 const InstagramConnectionPage = lazy(() => import('@/pages/InstagramConnectionPage'));
+const IceBreakersPage = lazy(() => import('@/pages/IceBreakersPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const BillingPage = lazy(() => import('@/pages/BillingPage'));
 const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'));
@@ -66,6 +69,7 @@ function AppRoutes() {
           <Route path={ROUTES.templates} element={<TemplatesPage />} />
           <Route path={ROUTES.analytics} element={<AnalyticsPage />} />
           <Route path={ROUTES.instagram} element={<InstagramConnectionPage />} />
+          <Route path={ROUTES.iceBreakers} element={<IceBreakersPage />} />
           <Route path={ROUTES.settings} element={<SettingsPage />} />
           <Route path={ROUTES.billing} element={<BillingPage />} />
         </Route>
