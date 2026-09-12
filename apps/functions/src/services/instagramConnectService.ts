@@ -78,6 +78,11 @@ async function persistConnectedAccount(
       status: InstagramAccountStatus.CONNECTED,
     },
     update: {
+      // Reassign ownership to whoever just completed OAuth for this Instagram business account —
+      // without this, reconnecting an account that was ever linked to a different InstaAuto user
+      // (e.g. during earlier testing) silently updates that old row while staying invisible to
+      // the current user's account list, even though the backend reports success.
+      userId,
       username: profile.username,
       name: profile.name,
       profilePictureUrl: profile.profilePictureUrl,
