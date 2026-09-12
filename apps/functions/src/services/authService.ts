@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
 import { prisma } from '../lib/prisma';
@@ -20,10 +21,14 @@ async function issueSession(user: User, meta: SessionMeta) {
   const accessToken = signAccessToken({ sub: user.id, email: user.email });
 
   // Create the session row first so we can bind the JWT's sessionId to it, then rotate.
+  // refreshTokenHash is @unique, so the placeholder must be unique per call too — a shared
+  // literal here (e.g. 'pending') collides under concurrent logins/refreshes (two requests
+  // both insert before either has updated to its real hash), throwing a Prisma unique-constraint
+  // error that surfaces to the client as a failed refresh — i.e. a spurious logout.
   const session = await prisma.session.create({
     data: {
       userId: user.id,
-      refreshTokenHash: 'pending',
+      refreshTokenHash: `pending-${crypto.randomUUID()}`,
       userAgent: meta.userAgent,
       ip: meta.ip,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -148,10 +153,12 @@ export async function refreshSession(refreshToken: string, meta: SessionMeta) {
 export async function logout(refreshToken: string): Promise<void> {
   try {
     const payload = verifyRefreshToken(refreshToken);
-    await prisma.session.update({
-      where: { id: payload.sessionId },
-      data: { revokedAt: new Date() },
-    }).catch(() => undefined);
+    await prisma.session
+      .update({
+        where: { id: payload.sessionId },
+        data: { revokedAt: new Date() },
+      })
+      .catch(() => undefined);
   } catch {
     // Already invalid/expired — nothing to revoke.
   }
