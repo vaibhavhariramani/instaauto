@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { emailLoginSchema, emailRegisterSchema, googleLoginSchema } from '@instaauto/shared';
 import { validateRequest } from '../middleware/validateRequest';
 import { asyncHandler } from '../middleware/asyncHandler';
-import { authRateLimiter } from '../middleware/rateLimiter';
+import { authRateLimiter, refreshRateLimiter } from '../middleware/rateLimiter';
 import * as authController from '../controllers/auth.controller';
 
 export const authRouter = Router();
@@ -25,5 +25,5 @@ authRouter.post(
   validateRequest({ body: emailLoginSchema }),
   asyncHandler(authController.emailLogin),
 );
-authRouter.post('/refresh', authRateLimiter, asyncHandler(authController.refresh));
+authRouter.post('/refresh', refreshRateLimiter, asyncHandler(authController.refresh));
 authRouter.post('/logout', asyncHandler(authController.logout));
