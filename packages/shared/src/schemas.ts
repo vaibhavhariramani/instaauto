@@ -57,7 +57,7 @@ const keywordSchema = z
   .max(60, 'Keyword is too long')
   .toLowerCase();
 
-export const automationSchema = z.object({
+const automationBaseSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
   instagramAccountId: z.string().min(1, 'Select an Instagram account'),
   reelId: z.string().min(1, 'Select a Reel'),
@@ -86,8 +86,32 @@ export const automationSchema = z.object({
   ignoreCreatorComments: z.boolean().default(true),
   isActive: z.boolean().default(true),
 });
+
+// Saving publicReplyEnabled=true with no publicReplyMessage used to be silently accepted — the
+// backend just skips posting a public reply when the message is empty, with no error surfaced
+// anywhere, so the toggle looked "on" but never actually did anything until re-saved with text.
+function requirePublicReplyMessageWhenEnabled(data: {
+  publicReplyEnabled?: boolean;
+  publicReplyMessage?: string | null;
+}) {
+  return (
+    !data.publicReplyEnabled ||
+    Boolean(data.publicReplyMessage && data.publicReplyMessage.trim().length > 0)
+  );
+}
+const publicReplyRefinement = {
+  message: 'Add a public reply message, or turn off "Reply to the comment publicly"',
+  path: ['publicReplyMessage'],
+};
+
+export const automationSchema = automationBaseSchema.refine(
+  requirePublicReplyMessageWhenEnabled,
+  publicReplyRefinement,
+);
 export type AutomationInput = z.infer<typeof automationSchema>;
-export const updateAutomationSchema = automationSchema.partial();
+export const updateAutomationSchema = automationBaseSchema
+  .partial()
+  .refine(requirePublicReplyMessageWhenEnabled, publicReplyRefinement);
 export type UpdateAutomationInput = z.infer<typeof updateAutomationSchema>;
 
 export const templateSchema = z.object({
