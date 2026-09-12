@@ -3,6 +3,12 @@
   "private": true,
   "version": "1.0.0",
   "description": "Instagram comment-to-DM automation SaaS",
+  "license": "MIT",
+  "homepage": "https://instaautomation-1da00.web.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vaibhavhariramani/instaauto.git"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
