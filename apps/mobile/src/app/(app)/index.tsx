@@ -54,7 +54,7 @@ const STAT_CARDS = [
     label: 'Success rate',
     icon: 'checkmark-circle' as const,
     color: '#eda100',
-    format: (n: number) => `${Math.round(n * 100)}%`,
+    format: (n: number) => `${Math.round(n)}%`,
   },
 ];
 

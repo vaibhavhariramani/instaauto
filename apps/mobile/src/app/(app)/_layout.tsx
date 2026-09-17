@@ -5,6 +5,8 @@ import { SymbolView } from 'expo-symbols';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+
 const IONICON_FALLBACK: Record<string, keyof typeof Ionicons.glyphMap> = {
   house: 'home',
   bolt: 'flash',
@@ -27,6 +29,7 @@ function TabIcon({ name, focused, color }: { name: string; focused: boolean; col
 }
 
 export default function AppTabsLayout() {
+  usePushNotifications();
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
@@ -69,6 +72,7 @@ export default function AppTabsLayout() {
         name="automations"
         options={{
           title: 'Automations',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="bolt" focused={focused} color={color} />
           ),

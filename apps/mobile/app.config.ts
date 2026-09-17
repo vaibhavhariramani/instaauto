@@ -17,6 +17,12 @@ const config: ExpoConfig = {
   icon: './assets/images/icon.png',
   scheme: 'instaauto',
   userInterfaceStyle: 'automatic',
+  owner: 'vaibhavji',
+  extra: {
+    eas: {
+      projectId: 'e2df383a-b4fa-4bed-a97a-2ec7a9dca4c9',
+    },
+  },
   ios: {
     icon: './assets/expo.icon',
     bundleIdentifier: 'com.vaibhavhariramani.instaauto',
@@ -51,6 +57,7 @@ const config: ExpoConfig = {
       },
     ],
     'expo-secure-store',
+    'expo-notifications',
     // The plugin hard-requires a real iosUrlScheme at prebuild time (an
     // empty options object throws), so it's only added once
     // EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID is set - until then the app builds

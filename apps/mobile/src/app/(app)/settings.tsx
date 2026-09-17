@@ -121,6 +121,14 @@ export default function SettingsScreen() {
             </View>
           )}
         </Card>
+        {accounts && accounts.length > 0 && (
+          <Button
+            label="Connect another account"
+            variant="secondary"
+            onPress={() => connect.mutate()}
+            loading={connect.isPending}
+          />
+        )}
       </View>
 
       <View className="gap-2">

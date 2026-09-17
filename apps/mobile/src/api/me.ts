@@ -55,6 +55,14 @@ export function useUpdateNotificationPrefs() {
   });
 }
 
+export function useRegisterPushToken() {
+  return useMutation({
+    mutationFn: async (token: string) => {
+      await apiClient.post('/me/push-token', { token });
+    },
+  });
+}
+
 export function useDeleteAccount() {
   const clear = useAuthStore((s) => s.clear);
   return useMutation({

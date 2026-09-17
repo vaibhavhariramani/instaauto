@@ -41,7 +41,7 @@ export default function AnalyticsScreen() {
                 Conversion rate
               </Text>
               <Text className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
-                {Math.round(data.conversionRate * 100)}%
+                {Math.round(data.conversionRate)}%
               </Text>
             </Card>
             {data.mostActiveReel && (
