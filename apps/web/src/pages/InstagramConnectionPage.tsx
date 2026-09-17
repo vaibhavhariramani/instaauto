@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { CheckCircle2, Instagram, Unlink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,15 +14,38 @@ import { extractErrorMessage } from '@/api/client';
 import { formatNumber } from '@/utils/format';
 
 export default function InstagramConnectionPage() {
-  const { data: accounts, isLoading } = useInstagramAccounts();
-  const connect = useConnectInstagram();
+  const { data: accounts, isLoading, refetch } = useInstagramAccounts();
+  const connect = useConnectInstagram('settings');
   const disconnect = useDisconnectInstagram();
   const [disconnectId, setDisconnectId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Real (non-mock) connects redirect away to Instagram and only come back here once Meta's
+  // OAuth callback has actually confirmed the token exchange — that's the one true success signal.
+  useEffect(() => {
+    const connectedParam = searchParams.get('connected');
+    if (connectedParam === 'true') {
+      toast.success('Instagram account connected');
+      refetch();
+    } else if (connectedParam === 'false') {
+      toast.error('Could not connect Instagram. Please try again.');
+    }
+    if (connectedParam) {
+      searchParams.delete('connected');
+      setSearchParams(searchParams, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const handleConnect = async () => {
     try {
-      await connect.mutateAsync();
-      toast.success('Instagram account connected');
+      const data = await connect.mutateAsync();
+      // Mock mode resolves synchronously with a fake account — safe to toast immediately. Real
+      // mode navigates the browser to Instagram; the actual success/failure toast only fires once
+      // the OAuth callback redirects back here with a confirmed `connected` param (see effect above).
+      if (data.mode === 'mock') {
+        toast.success('Instagram account connected');
+      }
     } catch (err) {
       toast.error(extractErrorMessage(err));
     }
@@ -84,11 +108,17 @@ export default function InstagramConnectionPage() {
                   <div>
                     <p className="font-semibold">@{account.username}</p>
                     <p className="text-sm text-muted-foreground">{account.name}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{formatNumber(account.followersCount)} followers</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {formatNumber(account.followersCount)} followers
+                    </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setDisconnectId(account.id)}>
+                  <Button
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => setDisconnectId(account.id)}
+                  >
                     <Unlink className="h-4 w-4" /> Disconnect
                   </Button>
                 </div>

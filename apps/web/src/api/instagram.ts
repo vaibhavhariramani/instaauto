@@ -19,11 +19,13 @@ interface ConnectResponse {
   authUrl?: string;
 }
 
-export function useConnectInstagram() {
+export function useConnectInstagram(returnTo: 'onboarding' | 'settings' = 'onboarding') {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post<ConnectResponse>('/instagram/connect');
+      const { data } = await apiClient.post<ConnectResponse>(
+        `/instagram/connect?returnTo=${returnTo}`,
+      );
       return data;
     },
     onSuccess: (data) => {
@@ -73,11 +75,14 @@ export function useReplyToComment(accountId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ commentId, message }: { commentId: string; message: string }) => {
-      const { data } = await apiClient.post(`/instagram/${accountId}/comments/${commentId}/reply`, { message });
+      const { data } = await apiClient.post(`/instagram/${accountId}/comments/${commentId}/reply`, {
+        message,
+      });
       return data;
     },
     onSuccess: () => {
-      if (accountId) queryClient.invalidateQueries({ queryKey: queryKeys.recentComments(accountId) });
+      if (accountId)
+        queryClient.invalidateQueries({ queryKey: queryKeys.recentComments(accountId) });
     },
   });
 }

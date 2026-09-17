@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const boolFromString = z
   .union([z.literal('true'), z.literal('false'), z.undefined()])
-  .transform((v) => (v === undefined ? true : v === 'true'));
+  .transform((v) => v === 'true');
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

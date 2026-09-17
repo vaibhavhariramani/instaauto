@@ -16,13 +16,18 @@ const OAUTH_SCOPES = [
   'instagram_business_manage_messages',
 ].join(',');
 
-export function getAuthorizationUrl(userId: string): string {
+export type OAuthReturnTo = 'onboarding' | 'settings';
+
+export function getAuthorizationUrl(
+  userId: string,
+  returnTo: OAuthReturnTo = 'onboarding',
+): string {
   if (!metaConfigured) {
     throw ApiError.serviceUnavailable(
       'Meta App is not configured on this server. Enable INSTAGRAM_MOCK_MODE for demo purposes, or set META_APP_ID/META_APP_SECRET.',
     );
   }
-  const state = jwt.sign({ userId }, config.JWT_ACCESS_SECRET, { expiresIn: '10m' });
+  const state = jwt.sign({ userId, returnTo }, config.JWT_ACCESS_SECRET, { expiresIn: '10m' });
   const params = new URLSearchParams({
     client_id: config.META_APP_ID!,
     redirect_uri: config.META_REDIRECT_URI!,
@@ -33,10 +38,13 @@ export function getAuthorizationUrl(userId: string): string {
   return `${IG_OAUTH_AUTHORIZE_URL}?${params.toString()}`;
 }
 
-export function verifyOAuthState(state: string): string {
+export function verifyOAuthState(state: string): { userId: string; returnTo: OAuthReturnTo } {
   try {
-    const payload = jwt.verify(state, config.JWT_ACCESS_SECRET) as { userId: string };
-    return payload.userId;
+    const payload = jwt.verify(state, config.JWT_ACCESS_SECRET) as {
+      userId: string;
+      returnTo?: OAuthReturnTo;
+    };
+    return { userId: payload.userId, returnTo: payload.returnTo ?? 'onboarding' };
   } catch {
     throw ApiError.badRequest('Invalid or expired OAuth state parameter');
   }
@@ -48,7 +56,12 @@ async function persistConnectedAccount(
   facebookPageId: string,
   accessToken: string,
   expiresInSeconds: number,
-  profile: { username: string; name: string; profilePictureUrl: string | null; followersCount: number },
+  profile: {
+    username: string;
+    name: string;
+    profilePictureUrl: string | null;
+    followersCount: number;
+  },
 ): Promise<InstagramAccount> {
   return prisma.instagramAccount.upsert({
     where: { instagramBusinessId: igUserId },
@@ -65,6 +78,11 @@ async function persistConnectedAccount(
       status: InstagramAccountStatus.CONNECTED,
     },
     update: {
+      // Reassign ownership to whoever just completed OAuth for this Instagram business account —
+      // without this, reconnecting an account that was ever linked to a different InstaAuto user
+      // (e.g. during earlier testing) silently updates that old row while staying invisible to
+      // the current user's account list, even though the backend reports success.
+      userId,
       username: profile.username,
       name: profile.name,
       profilePictureUrl: profile.profilePictureUrl,
@@ -79,7 +97,7 @@ async function persistConnectedAccount(
 }
 
 export async function handleOAuthCallback(code: string, state: string): Promise<InstagramAccount> {
-  const userId = verifyOAuthState(state);
+  const { userId } = verifyOAuthState(state);
 
   const shortLived = await instagramService.exchangeCodeForToken(code, config.META_REDIRECT_URI!);
   if (!shortLived.igUserId) {
@@ -89,7 +107,10 @@ export async function handleOAuthCallback(code: string, state: string): Promise<
 
   // getInstagramProfile self-corrects to the id Instagram actually uses in webhook payloads,
   // which can differ from the id returned by the token exchange above — always trust this one.
-  const profile = await instagramService.getInstagramProfile(shortLived.igUserId, longLived.accessToken);
+  const profile = await instagramService.getInstagramProfile(
+    shortLived.igUserId,
+    longLived.accessToken,
+  );
   const igUserId = profile.igUserId;
   await instagramService.subscribePageToWebhooks(igUserId, longLived.accessToken);
 
@@ -99,20 +120,40 @@ export async function handleOAuthCallback(code: string, state: string): Promise<
     igUserId, // no Facebook Page under direct Instagram Login; store the IG id as its own reference
     longLived.accessToken,
     longLived.expiresIn,
-    { username: profile.username, name: profile.name, profilePictureUrl: profile.profilePictureUrl, followersCount: profile.followersCount },
+    {
+      username: profile.username,
+      name: profile.name,
+      profilePictureUrl: profile.profilePictureUrl,
+      followersCount: profile.followersCount,
+    },
   );
 
-  await notificationService.create(userId, NotificationType.AUTOMATION_STARTED, 'Instagram connected', `@${profile.username} is now connected and ready for automations.`);
+  await notificationService.create(
+    userId,
+    NotificationType.AUTOMATION_STARTED,
+    'Instagram connected',
+    `@${profile.username} is now connected and ready for automations.`,
+  );
 
   return account;
 }
 
 export async function connectMockAccount(userId: string): Promise<InstagramAccount> {
-  const igUserId = await instagramService.getInstagramBusinessAccountId('mock-page', 'mock-token');
-  const profile = await instagramService.getInstagramProfile(igUserId!, 'mock-token');
+  // Deterministic per user — instagramBusinessId is globally unique, so a random id here would
+  // both create a fresh duplicate row on every click and risk two different users' mock connects
+  // colliding onto the same row (persistConnectedAccount's upsert never reassigns userId).
+  const igUserId = `mock-ig-${userId}`;
+  const profile = await instagramService.getInstagramProfile(igUserId, 'mock-token');
   const longLived = await instagramService.getLongLivedToken('mock-short');
 
-  return persistConnectedAccount(userId, igUserId!, 'mock-fb-page-100000000000000', longLived.accessToken, longLived.expiresIn, profile);
+  return persistConnectedAccount(
+    userId,
+    igUserId,
+    'mock-fb-page-100000000000000',
+    longLived.accessToken,
+    longLived.expiresIn,
+    profile,
+  );
 }
 
 export async function disconnectAccount(userId: string, accountId: string): Promise<void> {
@@ -123,7 +164,10 @@ export async function disconnectAccount(userId: string, accountId: string): Prom
     where: { id: accountId },
     data: { status: InstagramAccountStatus.DISCONNECTED, disconnectedAt: new Date() },
   });
-  await prisma.automation.updateMany({ where: { instagramAccountId: accountId }, data: { isActive: false } });
+  await prisma.automation.updateMany({
+    where: { instagramAccountId: accountId },
+    data: { isActive: false },
+  });
 
   await notificationService.create(
     userId,

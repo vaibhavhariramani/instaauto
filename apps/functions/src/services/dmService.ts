@@ -1,5 +1,11 @@
 import { MAX_DM_RETRY_ATTEMPTS, RETRY_BACKOFF_BASE_MINUTES } from '@instaauto/shared';
-import { MessageStatus, NotificationType, type Automation, type Comment, type InstagramAccount } from '@prisma/client';
+import {
+  MessageStatus,
+  NotificationType,
+  type Automation,
+  type Comment,
+  type InstagramAccount,
+} from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { instagramService } from './instagramService';
 import { decryptAccountToken } from './instagramConnectService';
@@ -31,7 +37,19 @@ export async function sendAutomationReply(
       const token = decryptAccountToken(account);
       await instagramService.replyToComment(comment.instagramCommentId, publicReply, token);
     } catch (err) {
-      logger.warn({ err: (err as Error).message, commentId: comment.id }, 'Public comment reply failed, continuing to DM');
+      const errorMessage = (err as Error).message || 'Unknown error';
+      logger.warn(
+        { err: errorMessage, commentId: comment.id },
+        'Public comment reply failed, continuing to DM',
+      );
+      // Previously silent — the DM below still sends, but the user had no way to find out the
+      // public reply never posted short of checking server logs they don't have access to.
+      await notificationService.create(
+        automation.userId,
+        NotificationType.DM_FAILED,
+        'Public reply failed',
+        `Could not post a public reply for "${automation.name}" — ${errorMessage}. The DM was still sent.`,
+      );
     }
   }
 
@@ -84,7 +102,9 @@ async function attemptSend(
         status: canRetry ? MessageStatus.RETRYING : MessageStatus.FAILED,
         errorMessage,
         retryCount,
-        nextRetryAt: canRetry ? new Date(Date.now() + backoffMinutes(retryCount) * 60 * 1000) : null,
+        nextRetryAt: canRetry
+          ? new Date(Date.now() + backoffMinutes(retryCount) * 60 * 1000)
+          : null,
       },
     });
     await bumpDailyCounters(message.userId, { dmsFailed: 1 });
