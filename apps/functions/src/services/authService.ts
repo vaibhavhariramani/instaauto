@@ -11,6 +11,12 @@ const BCRYPT_ROUNDS = 12;
 
 const googleClient = new OAuth2Client(config.GOOGLE_CLIENT_ID);
 
+// Web (Google Identity Services) and mobile (native Google Sign-In) each need their
+// own OAuth client type, so a token can legitimately be audienced to either one.
+const googleTokenAudiences = [config.GOOGLE_CLIENT_ID, config.GOOGLE_MOBILE_CLIENT_ID].filter(
+  (id): id is string => Boolean(id),
+);
+
 interface SessionMeta {
   userAgent?: string;
   ip?: string;
@@ -41,11 +47,11 @@ async function issueSession(user: User, meta: SessionMeta) {
 export async function loginWithGoogle(idToken: string, meta: SessionMeta) {
   let ticket;
   try {
-    ticket = await googleClient.verifyIdToken({ idToken, audience: config.GOOGLE_CLIENT_ID });
+    ticket = await googleClient.verifyIdToken({ idToken, audience: googleTokenAudiences });
   } catch (err) {
-    // Wrong/expired token, or the token's audience doesn't match this server's
-    // GOOGLE_CLIENT_ID (e.g. backend and mobile client IDs are in different
-    // GCP projects) - surface as a clear 401 instead of an opaque 500.
+    // Wrong/expired token, or the token's audience doesn't match GOOGLE_CLIENT_ID or
+    // GOOGLE_MOBILE_CLIENT_ID (e.g. one of them is missing, or in the wrong GCP
+    // project) - surface as a clear 401 instead of an opaque 500.
     throw ApiError.unauthorized(
       `Invalid Google credential: ${err instanceof Error ? err.message : 'verification failed'}`,
     );

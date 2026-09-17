@@ -99,6 +99,10 @@ model User {
   emailOnDisconnect  Boolean  @default(true)
   emailWeeklyDigest  Boolean  @default(false)
 
+  // Expo push tokens - an array since the same account can be signed in on
+  // multiple devices; each token gets its own push message.
+  pushTokens         String[] @default([])
+
   stripeCustomerId              String?             @unique
   subscriptionPlan              SubscriptionPlan     @default(STARTER)
   subscriptionStatus            SubscriptionStatus   @default(NONE)

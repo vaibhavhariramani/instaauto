@@ -12,14 +12,17 @@ const envSchema = z.object({
 
   JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 chars'),
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 chars'),
-  ENCRYPTION_KEY: z
-    .string()
-    .length(64, 'ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
+  ENCRYPTION_KEY: z.string().length(64, 'ENCRYPTION_KEY must be a 64-char hex string (32 bytes)'),
 
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   COOKIE_DOMAIN: z.string().optional(),
 
+  // The web app's OAuth client (Google Identity Services). Required.
   GOOGLE_CLIENT_ID: z.string().min(1, 'GOOGLE_CLIENT_ID is required'),
+  // The mobile app's OAuth client (native Google Sign-In). iOS/Android need their own
+  // client type, so this is a distinct id from GOOGLE_CLIENT_ID - both are accepted as
+  // valid token audiences so web and mobile sign-in work at the same time.
+  GOOGLE_MOBILE_CLIENT_ID: z.string().optional(),
 
   INSTAGRAM_MOCK_MODE: boolFromString,
 
@@ -61,5 +64,7 @@ if (!metaConfigured) {
   );
 }
 if (!stripeConfigured) {
-  console.warn('[config] Stripe keys are not set — billing routes will return 503 until configured.');
+  console.warn(
+    '[config] Stripe keys are not set — billing routes will return 503 until configured.',
+  );
 }
