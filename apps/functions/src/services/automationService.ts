@@ -13,12 +13,24 @@ import { instagramService } from './instagramService';
 import { decryptAccountToken } from './instagramConnectService';
 import { logger } from '../lib/logger';
 
+// Per-account cooldown so rapid repeat list loads (switching tabs, pull-to-refresh)
+// don't each fire a fresh round of Graph API calls - lives only for this instance's
+// lifetime, which is fine, it's just a rate-limit/latency guard, not correctness.
+const lastThumbnailRefreshAt = new Map<string, number>();
+const THUMBNAIL_REFRESH_COOLDOWN_MS = 5 * 60_000;
+
 export async function listAutomations(userId: string) {
   const automations = await prisma.automation.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
   });
-  return refreshStaleThumbnails(automations);
+  // Reel thumbnail URLs are signed CDN links that expire - they do need refreshing
+  // eventually - but doing that against the live Graph API in the request path made
+  // every single list load pay a multi-second network round trip per connected
+  // account. Return what's already in the DB immediately and let the refresh
+  // happen in the background; the next load picks up the freshened URLs.
+  void refreshStaleThumbnails(automations);
+  return automations;
 }
 
 /**
@@ -29,8 +41,12 @@ export async function listAutomations(userId: string) {
  * the automations list itself.
  */
 async function refreshStaleThumbnails(automations: Automation[]): Promise<Automation[]> {
-  const accountIds = [...new Set(automations.map((a) => a.instagramAccountId))];
+  const accountIds = [...new Set(automations.map((a) => a.instagramAccountId))].filter((id) => {
+    const last = lastThumbnailRefreshAt.get(id);
+    return !last || Date.now() - last > THUMBNAIL_REFRESH_COOLDOWN_MS;
+  });
   if (accountIds.length === 0) return automations;
+  for (const id of accountIds) lastThumbnailRefreshAt.set(id, Date.now());
 
   const accounts = await prisma.instagramAccount.findMany({
     where: { id: { in: accountIds }, status: InstagramAccountStatus.CONNECTED },

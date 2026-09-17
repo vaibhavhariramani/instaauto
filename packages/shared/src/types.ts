@@ -171,5 +171,8 @@ export interface AnalyticsDto {
 
 export interface AuthTokensDto {
   accessToken: string;
+  // Only meaningful to clients that manage their own refresh tokens (mobile,
+  // for multi-account switching) - web relies on the httpOnly cookie instead.
+  refreshToken: string;
   user: UserDto;
 }

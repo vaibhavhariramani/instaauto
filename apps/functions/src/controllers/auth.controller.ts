@@ -17,6 +17,11 @@ function cookieOptions() {
   };
 }
 
+// Web relies on the httpOnly cookie alone. Mobile has no shared cookie jar per
+// account - each saved account needs its own refresh token in hand so the app
+// can hold several signed-in accounts at once and switch between them without
+// re-authenticating, so the raw value is also returned in the body for it to
+// store (in SecureStore) alongside the cookie, which keeps working for web.
 export async function googleLogin(req: Request, res: Response): Promise<void> {
   const { idToken } = req.body as GoogleLoginInput;
   const { accessToken, refreshToken, user } = await authService.loginWithGoogle(idToken, {
@@ -24,17 +29,22 @@ export async function googleLogin(req: Request, res: Response): Promise<void> {
     ip: req.ip,
   });
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions());
-  res.json({ accessToken, user: toUserDto(user) });
+  res.json({ accessToken, refreshToken, user: toUserDto(user) });
 }
 
 export async function emailRegister(req: Request, res: Response): Promise<void> {
   const { email, password, name } = req.body as EmailRegisterInput;
-  const { accessToken, refreshToken, user } = await authService.registerWithEmail(email, password, name, {
-    userAgent: req.headers['user-agent'],
-    ip: req.ip,
-  });
+  const { accessToken, refreshToken, user } = await authService.registerWithEmail(
+    email,
+    password,
+    name,
+    {
+      userAgent: req.headers['user-agent'],
+      ip: req.ip,
+    },
+  );
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions());
-  res.json({ accessToken, user: toUserDto(user) });
+  res.json({ accessToken, refreshToken, user: toUserDto(user) });
 }
 
 export async function emailLogin(req: Request, res: Response): Promise<void> {
@@ -44,11 +54,14 @@ export async function emailLogin(req: Request, res: Response): Promise<void> {
     ip: req.ip,
   });
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions());
-  res.json({ accessToken, user: toUserDto(user) });
+  res.json({ accessToken, refreshToken, user: toUserDto(user) });
 }
 
 export async function refresh(req: Request, res: Response): Promise<void> {
-  const token = req.cookies?.[REFRESH_COOKIE_NAME];
+  // Mobile passes the specific saved account's refresh token explicitly (it's
+  // switching between several); web has only the one cookie.
+  const token =
+    (req.body?.refreshToken as string | undefined) || req.cookies?.[REFRESH_COOKIE_NAME];
   if (!token) throw ApiError.unauthorized('No refresh token');
 
   const { accessToken, refreshToken, user } = await authService.refreshSession(token, {
@@ -56,11 +69,14 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     ip: req.ip,
   });
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions());
-  res.json({ accessToken, user: toUserDto(user) });
+  res.json({ accessToken, refreshToken, user: toUserDto(user) });
 }
 
 export async function logout(req: Request, res: Response): Promise<void> {
-  const token = req.cookies?.[REFRESH_COOKIE_NAME];
+  // Mobile signing out of one saved (not necessarily currently-active-cookie)
+  // account passes that account's own refresh token to revoke specifically.
+  const token =
+    (req.body?.refreshToken as string | undefined) || req.cookies?.[REFRESH_COOKIE_NAME];
   if (token) await authService.logout(token);
   res.clearCookie(REFRESH_COOKIE_NAME, { path: '/api/auth' });
   res.status(204).send();
