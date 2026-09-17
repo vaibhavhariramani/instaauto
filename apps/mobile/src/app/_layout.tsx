@@ -1,19 +1,27 @@
 import '../styles/global.css';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 
 import { queryClient } from '@/api/queryClient';
 import { useAuthStore } from '@/store/authStore';
+import { useAccountsStore } from '@/store/accountsStore';
 import { useAuthBootstrap } from '@/hooks/useAuthBootstrap';
 import { useOnboardingBootstrap, useOnboardingStatus } from '@/hooks/useOnboardingStatus';
 
 SplashScreen.preventAutoHideAsync();
+
+const asyncStoragePersister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: 'instaauto-query-cache',
+});
 
 function RootNavigator() {
   useAuthBootstrap();
@@ -47,16 +55,24 @@ function RootNavigator() {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  // Rehydrating another account's persisted cache under a new active user would
+  // briefly flash their data - bust the persisted cache whenever the active
+  // account changes so a switch always starts from a clean slate.
+  const activeUserId = useAccountsStore((s) => s.activeUserId);
+  const persistOptions = useMemo(
+    () => ({ persister: asyncStoragePersister, buster: activeUserId ?? 'anonymous' }),
+    [activeUserId],
+  );
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <StatusBar style="auto" />
             <RootNavigator />
           </ThemeProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

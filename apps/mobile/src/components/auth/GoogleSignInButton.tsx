@@ -14,7 +14,7 @@ if (webClientId) {
   GoogleSignin.configure({ webClientId, iosClientId });
 }
 
-export function GoogleSignInButton() {
+export function GoogleSignInButton({ onSuccess }: { onSuccess?: () => void }) {
   const googleLogin = useGoogleLogin();
   const [error, setError] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
@@ -35,6 +35,7 @@ export function GoogleSignInButton() {
       const response = await GoogleSignin.signIn();
       if (response.type !== 'success' || !response.data.idToken) return;
       await googleLogin.mutateAsync(response.data.idToken);
+      onSuccess?.();
     } catch (err) {
       const code = (err as { code?: string }).code;
       // Cancelling isn't an error worth surfacing.

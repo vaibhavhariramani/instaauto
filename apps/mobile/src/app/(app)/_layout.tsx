@@ -91,6 +91,7 @@ export default function AppTabsLayout() {
         name="settings"
         options={{
           title: 'Settings',
+          headerShown: false,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="gearshape" focused={focused} color={color} />
           ),

@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/store/authStore';
-import type { ApiErrorBody } from '@instaauto/shared';
+import { useAccountsStore } from '@/store/accountsStore';
+import type { ApiErrorBody, AuthTokensDto } from '@instaauto/shared';
 
 // No same-origin relative path on native, unlike the web app - default to
 // the deployed production API so the app works out of the box; override
@@ -24,15 +25,26 @@ apiClient.interceptors.request.use((config) => {
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {
+  const { accounts, activeUserId, upsertAccount } = useAccountsStore.getState();
+  const active = accounts.find((a) => a.userId === activeUserId);
+
   try {
-    const { data } = await axios.post(
+    const { data } = await axios.post<AuthTokensDto>(
       `${API_BASE_URL}/auth/refresh`,
-      {},
+      active ? { refreshToken: active.refreshToken } : {},
       { withCredentials: true },
     );
+    upsertAccount({
+      userId: data.user.id,
+      email: data.user.email,
+      name: data.user.name,
+      avatarUrl: data.user.avatarUrl,
+      refreshToken: data.refreshToken,
+    });
     useAuthStore.getState().setAuth(data.accessToken, data.user);
-    return data.accessToken as string;
+    return data.accessToken;
   } catch {
+    if (active) useAccountsStore.getState().removeAccount(active.userId);
     useAuthStore.getState().clear();
     return null;
   }

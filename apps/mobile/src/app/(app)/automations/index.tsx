@@ -8,11 +8,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AutomationDto } from '@instaauto/shared';
 
 import { StatusPill } from '@/components/ui/StatusPill';
@@ -107,6 +108,7 @@ function AutomationTile({ automation }: { automation: AutomationDto }) {
 
 export default function AutomationsListScreen() {
   const { data, isLoading, refetch, isRefetching } = useAutomations();
+  const insets = useSafeAreaInsets();
 
   if (isLoading) {
     return (
@@ -118,28 +120,12 @@ export default function AutomationsListScreen() {
 
   return (
     <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <Pressable
-              accessibilityRole="button"
-              hitSlop={12}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/automations/new');
-              }}
-            >
-              <Ionicons name="add-circle" size={28} color="#5e6ad2" />
-            </Pressable>
-          ),
-        }}
-      />
       <FlatList
         data={data ?? []}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerClassName="p-2.5"
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 150 }}
         refreshing={isRefetching}
         onRefresh={refetch}
         renderItem={({ item }) => <AutomationTile automation={item} />}
@@ -152,11 +138,31 @@ export default function AutomationsListScreen() {
               No automations yet
             </Text>
             <Text className="px-8 text-center text-xs text-neutral-400 dark:text-neutral-500">
-              Tap + to create one from a Reel on your connected Instagram account.
+              Create one from a Reel on your connected Instagram account.
             </Text>
           </View>
         }
       />
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          router.push('/automations/new');
+        }}
+        className="absolute right-4 flex-row items-center gap-2 rounded-full bg-brand-500 py-3.5 pl-4 pr-5 active:bg-brand-600"
+        style={{
+          bottom: insets.bottom + 65,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 10,
+          elevation: 6,
+        }}
+      >
+        <Ionicons name="add" size={20} color="white" />
+        <Text className="text-[15px] font-semibold text-white">Add new automation</Text>
+      </Pressable>
     </View>
   );
 }
