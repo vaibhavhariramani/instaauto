@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { NotificationDto, PaginatedResult } from '@instaauto/shared';
 import { apiClient } from './client';
 import { queryKeys } from '@/constants/queryKeys';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore, useActiveUserId } from '@/store/authStore';
 
 interface NotificationsResponse extends PaginatedResult<NotificationDto> {
   unreadCount: number;
@@ -10,8 +10,9 @@ interface NotificationsResponse extends PaginatedResult<NotificationDto> {
 
 export function useNotifications(page = 1) {
   const isAuthed = Boolean(useAuthStore((s) => s.accessToken));
+  const userId = useActiveUserId();
   return useQuery({
-    queryKey: queryKeys.notifications(page),
+    queryKey: [...queryKeys.notifications(page), userId],
     queryFn: async () => {
       const { data } = await apiClient.get<NotificationsResponse>('/notifications', {
         params: { page },

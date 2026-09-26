@@ -6,10 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { HeaderBackButton } from '@/components/ui/HeaderBackButton';
 
 const IONICON_FALLBACK: Record<string, keyof typeof Ionicons.glyphMap> = {
   house: 'home',
   bolt: 'flash',
+  paperplane: 'paper-plane',
   'chart.bar': 'bar-chart',
   gearshape: 'settings',
 };
@@ -63,6 +65,7 @@ export default function AppTabsLayout() {
         name="index"
         options={{
           title: 'Dashboard',
+          headerLeft: () => <HeaderBackButton />,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="house" focused={focused} color={color} />
           ),
@@ -79,9 +82,20 @@ export default function AppTabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="messages"
+        options={{
+          title: 'Messages',
+          headerShown: false,
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name="paperplane" focused={focused} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="analytics"
         options={{
           title: 'Analytics',
+          headerLeft: () => <HeaderBackButton />,
           tabBarIcon: ({ color, focused }) => (
             <TabIcon name="chart.bar" focused={focused} color={color} />
           ),
@@ -97,6 +111,10 @@ export default function AppTabsLayout() {
           ),
         }}
       />
+      {/* Reachable only by pushing a route (dashboard tap-through, etc.) - href: null keeps
+          them off the tab bar while still giving them their own Stack + back button. */}
+      <Tabs.Screen name="comments" options={{ headerShown: false, href: null }} />
+      <Tabs.Screen name="reels" options={{ headerShown: false, href: null }} />
     </Tabs>
   );
 }

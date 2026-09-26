@@ -13,6 +13,14 @@ export const googleLoginSchema = z.object({
 });
 export type GoogleLoginInput = z.infer<typeof googleLoginSchema>;
 
+export const appleLoginSchema = z.object({
+  identityToken: z.string().min(10, 'Missing Apple identity token'),
+  // Apple only includes the name on the very first authorization - the client
+  // passes it along that one time since the ID token itself never carries it.
+  fullName: z.string().trim().max(160).optional().nullable(),
+});
+export type AppleLoginInput = z.infer<typeof appleLoginSchema>;
+
 const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
@@ -35,6 +43,11 @@ export const replyToCommentSchema = z.object({
   message: z.string().trim().min(1, 'Reply message is required').max(2200, 'Reply is too long'),
 });
 export type ReplyToCommentInput = z.infer<typeof replyToCommentSchema>;
+
+export const sendMessageSchema = z.object({
+  content: z.string().trim().min(1, 'Message is required').max(2200, 'Message is too long'),
+});
+export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
@@ -87,6 +100,13 @@ const automationBaseSchema = z.object({
     .max(2200, 'Reply is too long (max 2200 characters)')
     .optional()
     .nullable(),
+  requireFollowBeforeCta: z.boolean().default(false),
+  followGateMessage: z
+    .string()
+    .trim()
+    .max(1000, 'Message is too long (max 1000 characters)')
+    .optional()
+    .nullable(),
   dmOncePerUser: z.boolean().default(true),
   ignoreCreatorComments: z.boolean().default(true),
   isActive: z.boolean().default(true),
@@ -109,14 +129,29 @@ const publicReplyRefinement = {
   path: ['publicReplyMessage'],
 };
 
-export const automationSchema = automationBaseSchema.refine(
-  requirePublicReplyMessageWhenEnabled,
-  publicReplyRefinement,
-);
+// Same shape of bug as the public-reply one above, for the "ask them to follow first" gate.
+function requireFollowGateMessageWhenEnabled(data: {
+  requireFollowBeforeCta?: boolean;
+  followGateMessage?: string | null;
+}) {
+  return (
+    !data.requireFollowBeforeCta ||
+    Boolean(data.followGateMessage && data.followGateMessage.trim().length > 0)
+  );
+}
+const followGateRefinement = {
+  message: 'Add a follow-ask message, or turn off "Require follow before sending the DM"',
+  path: ['followGateMessage'],
+};
+
+export const automationSchema = automationBaseSchema
+  .refine(requirePublicReplyMessageWhenEnabled, publicReplyRefinement)
+  .refine(requireFollowGateMessageWhenEnabled, followGateRefinement);
 export type AutomationInput = z.infer<typeof automationSchema>;
 export const updateAutomationSchema = automationBaseSchema
   .partial()
-  .refine(requirePublicReplyMessageWhenEnabled, publicReplyRefinement);
+  .refine(requirePublicReplyMessageWhenEnabled, publicReplyRefinement)
+  .refine(requireFollowGateMessageWhenEnabled, followGateRefinement);
 export type UpdateAutomationInput = z.infer<typeof updateAutomationSchema>;
 
 export const templateSchema = z.object({

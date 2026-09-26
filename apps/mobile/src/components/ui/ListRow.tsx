@@ -10,6 +10,7 @@ interface ListRowProps {
   right?: React.ReactNode;
   onPress?: () => void;
   danger?: boolean;
+  testID?: string;
 }
 
 export function ListRow({
@@ -21,13 +22,20 @@ export function ListRow({
   right,
   onPress,
   danger,
+  testID,
 }: ListRowProps) {
   const Wrapper = onPress ? Pressable : View;
   return (
     <Wrapper
       onPress={onPress}
+      testID={testID}
       className="flex-row items-center gap-3 border-t border-neutral-100 py-3 first:border-t-0 dark:border-neutral-800"
-      {...(onPress ? { accessibilityRole: 'button' as const } : {})}
+      {...(onPress
+        ? {
+            accessibilityRole: 'button' as const,
+            accessibilityLabel: subtitle ? `${label}. ${subtitle}` : label,
+          }
+        : {})}
     >
       {icon ? (
         <View
@@ -44,7 +52,7 @@ export function ListRow({
           {label}
         </Text>
         {subtitle ? (
-          <Text className="text-xs text-neutral-500 dark:text-neutral-400">{subtitle}</Text>
+          <Text className="text-xs text-neutral-600 dark:text-neutral-400">{subtitle}</Text>
         ) : null}
       </View>
       {right}

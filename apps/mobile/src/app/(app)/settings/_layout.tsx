@@ -1,6 +1,8 @@
 import { useColorScheme } from 'react-native';
 import { Stack } from 'expo-router';
 
+import { HeaderBackButton } from '@/components/ui/HeaderBackButton';
+
 export default function SettingsStackLayout() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -16,7 +18,10 @@ export default function SettingsStackLayout() {
         headerTintColor: ink,
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Settings' }} />
+      <Stack.Screen
+        name="index"
+        options={{ title: 'Settings', headerLeft: () => <HeaderBackButton /> }}
+      />
       <Stack.Screen name="accounts" options={{ title: 'Switch account', presentation: 'modal' }} />
       <Stack.Screen name="add-account" options={{ title: 'Add account', presentation: 'modal' }} />
     </Stack>

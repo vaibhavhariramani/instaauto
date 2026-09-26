@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
+import appleSignin from 'apple-signin-auth';
 import { prisma } from '../lib/prisma';
 import { config } from '../config/env';
 import { hashToken } from '../lib/crypto';
@@ -103,6 +104,50 @@ export async function loginWithGoogle(idToken: string, meta: SessionMeta) {
 
   await prisma.auditLog.create({
     data: { userId: user.id, action: 'auth.google_login', ip: meta.ip },
+  });
+
+  return issueSession(user, meta);
+}
+
+export async function loginWithApple(
+  identityToken: string,
+  fullName: string | null | undefined,
+  meta: SessionMeta,
+) {
+  let payload;
+  try {
+    payload = await appleSignin.verifyIdToken(identityToken, { audience: config.APPLE_BUNDLE_ID });
+  } catch (err) {
+    throw ApiError.unauthorized(
+      `Invalid Apple credential: ${err instanceof Error ? err.message : 'verification failed'}`,
+    );
+  }
+  if (!payload.email || !payload.sub) {
+    throw ApiError.unauthorized('Invalid Apple credential');
+  }
+
+  // Same googleId-then-email fallback as loginWithGoogle, so an existing email/password
+  // (or Google) account gets linked instead of hitting the unique email constraint.
+  let user = await prisma.user.findUnique({ where: { appleId: payload.sub } });
+
+  if (!user) {
+    const existingByEmail = await prisma.user.findUnique({ where: { email: payload.email } });
+    user = existingByEmail
+      ? await prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: { appleId: payload.sub, name: existingByEmail.name ?? fullName ?? undefined },
+        })
+      : await prisma.user.create({
+          data: {
+            appleId: payload.sub,
+            email: payload.email,
+            name: fullName ?? payload.email.split('@')[0]!,
+          },
+        });
+  }
+
+  await prisma.auditLog.create({
+    data: { userId: user.id, action: 'auth.apple_login', ip: meta.ip },
   });
 
   return issueSession(user, meta);

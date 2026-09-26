@@ -1,6 +1,8 @@
 import { useColorScheme } from 'react-native';
 import { Stack } from 'expo-router';
 
+import { HeaderBackButton } from '@/components/ui/HeaderBackButton';
+
 export default function AutomationsStackLayout() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
@@ -16,7 +18,10 @@ export default function AutomationsStackLayout() {
         headerTintColor: ink,
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Automations' }} />
+      <Stack.Screen
+        name="index"
+        options={{ title: 'Automations', headerLeft: () => <HeaderBackButton /> }}
+      />
       <Stack.Screen name="[id]" options={{ title: '' }} />
       <Stack.Screen name="new" options={{ title: 'New automation', presentation: 'modal' }} />
     </Stack>

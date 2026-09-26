@@ -15,7 +15,7 @@ export default function AddAccountScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View className="mb-2 gap-1">
-          <Text className="text-[15px] text-neutral-500 dark:text-neutral-400">
+          <Text className="text-[15px] text-neutral-600 dark:text-neutral-400">
             Sign in with another email or Google account - it's saved alongside your current one so
             you can switch back anytime.
           </Text>

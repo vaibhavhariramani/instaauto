@@ -3,10 +3,12 @@ import * as WebBrowser from 'expo-web-browser';
 import type { InstagramAccountDto, ReelDto, RecentCommentDto } from '@instaauto/shared';
 import { apiClient } from './client';
 import { queryKeys } from '@/constants/queryKeys';
+import { useActiveUserId } from '@/store/authStore';
 
 export function useInstagramAccounts() {
+  const userId = useActiveUserId();
   return useQuery({
-    queryKey: queryKeys.instagramAccounts,
+    queryKey: [...queryKeys.instagramAccounts, userId],
     queryFn: async () => {
       const { data } = await apiClient.get<InstagramAccountDto[]>('/instagram');
       return data;
@@ -53,8 +55,9 @@ export function useDisconnectInstagram() {
 }
 
 export function useReels(accountId: string | undefined) {
+  const userId = useActiveUserId();
   return useQuery({
-    queryKey: queryKeys.reels(accountId ?? ''),
+    queryKey: [...queryKeys.reels(accountId ?? ''), userId],
     queryFn: async () => {
       const { data } = await apiClient.get<ReelDto[]>(`/instagram/${accountId}/reels`);
       return data;
@@ -65,8 +68,9 @@ export function useReels(accountId: string | undefined) {
 }
 
 export function useRecentComments(accountId: string | undefined) {
+  const userId = useActiveUserId();
   return useQuery({
-    queryKey: queryKeys.recentComments(accountId ?? ''),
+    queryKey: [...queryKeys.recentComments(accountId ?? ''), userId],
     queryFn: async () => {
       const { data } = await apiClient.get<RecentCommentDto[]>(`/instagram/${accountId}/comments`);
       return data;

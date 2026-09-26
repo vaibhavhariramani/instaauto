@@ -1,7 +1,17 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -10,7 +20,7 @@ import { StatusPill } from '@/components/ui/StatusPill';
 import { useAuthStore } from '@/store/authStore';
 import { useAccountsStore } from '@/store/accountsStore';
 import { useLogout } from '@/api/auth';
-import { useMe, useUpdateNotificationPrefs } from '@/api/me';
+import { useDeleteAccount, useMe, useUpdateNotificationPrefs } from '@/api/me';
 import { useConnectInstagram, useDisconnectInstagram, useInstagramAccounts } from '@/api/instagram';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -20,10 +30,13 @@ const STATUS_LABEL: Record<string, string> = {
   ERROR: 'Error',
 };
 
+const PRIVACY_POLICY_URL = 'https://instaautomation-1da00.web.app/privacy';
+
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const savedAccountCount = useAccountsStore((s) => s.accounts.length);
   const logout = useLogout();
+  const deleteAccount = useDeleteAccount();
   const { data: accounts, isLoading: accountsLoading } = useInstagramAccounts();
   const connect = useConnectInstagram();
   const disconnect = useDisconnectInstagram();
@@ -59,7 +72,7 @@ export default function SettingsScreen() {
             <Text className="text-base font-semibold text-neutral-900 dark:text-neutral-50">
               {user.name}
             </Text>
-            <Text className="text-sm text-neutral-500 dark:text-neutral-400">{user.email}</Text>
+            <Text className="text-sm text-neutral-600 dark:text-neutral-400">{user.email}</Text>
           </View>
           <View className="items-end gap-1">
             {savedAccountCount > 1 && (
@@ -73,7 +86,7 @@ export default function SettingsScreen() {
       </Pressable>
 
       <View className="gap-2">
-        <Text className="px-1 text-xs font-medium uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+        <Text className="px-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-500">
           Instagram accounts
         </Text>
         <Card>
@@ -81,7 +94,7 @@ export default function SettingsScreen() {
             <ActivityIndicator color="#5e6ad2" />
           ) : !accounts || accounts.length === 0 ? (
             <View className="items-center gap-3 py-2">
-              <Text className="text-sm text-neutral-500 dark:text-neutral-400">
+              <Text className="text-sm text-neutral-600 dark:text-neutral-400">
                 No Instagram account connected yet.
               </Text>
               <Button
@@ -135,6 +148,17 @@ export default function SettingsScreen() {
           )}
         </Card>
         {accounts && accounts.length > 0 && (
+          <Card>
+            <ListRow
+              testID="settings-reels-row"
+              icon="film-outline"
+              label="Reels"
+              subtitle="Posted Reels and their engagement"
+              onPress={() => router.push('/reels')}
+            />
+          </Card>
+        )}
+        {accounts && accounts.length > 0 && (
           <Button
             label="Connect another account"
             variant="secondary"
@@ -145,7 +169,7 @@ export default function SettingsScreen() {
       </View>
 
       <View className="gap-2">
-        <Text className="px-1 text-xs font-medium uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+        <Text className="px-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-500">
           Notifications
         </Text>
         <Card>
@@ -178,6 +202,20 @@ export default function SettingsScreen() {
         </Card>
       </View>
 
+      <View className="gap-2">
+        <Text className="px-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-500">
+          Legal
+        </Text>
+        <Card>
+          <ListRow
+            testID="settings-privacy-policy-row"
+            icon="document-text-outline"
+            label="Privacy Policy"
+            onPress={() => WebBrowser.openBrowserAsync(PRIVACY_POLICY_URL)}
+          />
+        </Card>
+      </View>
+
       <Card>
         <Pressable
           accessibilityRole="button"
@@ -192,6 +230,41 @@ export default function SettingsScreen() {
           )}
         </Pressable>
       </Card>
+
+      <View className="gap-2">
+        <Text className="px-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-500">
+          Danger zone
+        </Text>
+        <Card>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              Alert.alert(
+                'Delete your account?',
+                'This permanently deletes your account, connected Instagram accounts, automations, and message history. This cannot be undone.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Delete account',
+                    style: 'destructive',
+                    onPress: () => deleteAccount.mutate(),
+                  },
+                ],
+              );
+            }}
+            disabled={deleteAccount.isPending}
+            className="items-center"
+          >
+            {deleteAccount.isPending ? (
+              <ActivityIndicator color="#dc2626" />
+            ) : (
+              <Text className="text-base font-semibold text-red-600 dark:text-red-400">
+                Delete account
+              </Text>
+            )}
+          </Pressable>
+        </Card>
+      </View>
     </ScrollView>
   );
 }

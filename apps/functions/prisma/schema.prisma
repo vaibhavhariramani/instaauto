@@ -90,6 +90,7 @@ model User {
   name               String
   avatarUrl          String?
   googleId           String?  @unique
+  appleId            String?  @unique
   passwordHash       String?
   timezone           String   @default("UTC")
   theme              Theme    @default(SYSTEM)
@@ -210,6 +211,14 @@ model Automation {
   publicReplyEnabled   Boolean  @default(false)
   publicReplyMessage   String?
 
+  // Instagram only allows looking up is_user_follow_business once the recipient has sent at
+  // least one inbound DM - a comment or our own private reply doesn't establish that consent
+  // window. So the CTA can never be gated at comment-time; followGateMessage goes out first,
+  // and the real reply only follows once they reply back and the check can actually run
+  // (see conversationService.processMessagingEvent).
+  requireFollowBeforeCta Boolean @default(false)
+  followGateMessage      String?
+
   dmOncePerUser        Boolean  @default(true)
   ignoreCreatorComments Boolean @default(true)
   isActive             Boolean  @default(true)
@@ -222,9 +231,28 @@ model Automation {
 
   comments Comment[]
   messages Message[]
+  followGateStates FollowGateState[]
 
   @@index([userId])
   @@index([instagramAccountId, reelId])
+}
+
+// Tracks an in-progress "please follow before I send the CTA" gate for one (account,
+// participant, automation) triple. Deleted once the gate resolves (they follow, or the
+// retry cap is hit and the CTA goes out anyway).
+model FollowGateState {
+  id                   String   @id @default(cuid())
+  instagramAccountId   String
+  participantIgUserId  String
+  automationId         String
+  automation           Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  asksSent             Int      @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([instagramAccountId, participantIgUserId, automationId])
 }
 
 model Template {

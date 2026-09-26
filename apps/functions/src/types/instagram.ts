@@ -55,8 +55,23 @@ export interface InstagramService {
   getInstagramProfile(igUserId: string, accessToken: string): Promise<InstagramProfile>;
   subscribePageToWebhooks(pageId: string, pageAccessToken: string): Promise<void>;
   getReels(igUserId: string, accessToken: string): Promise<ReelSummary[]>;
-  sendPrivateReply(commentId: string, message: string, accessToken: string): Promise<SendReplyResult>;
+  sendPrivateReply(
+    commentId: string,
+    message: string,
+    accessToken: string,
+  ): Promise<SendReplyResult>;
   replyToComment(commentId: string, message: string, accessToken: string): Promise<SendReplyResult>;
-  getRecentComments(igUserId: string, accessToken: string, limit?: number): Promise<RecentComment[]>;
+  getRecentComments(
+    igUserId: string,
+    accessToken: string,
+    limit?: number,
+  ): Promise<RecentComment[]>;
   getUserProfileByIgsid(igsid: string, accessToken: string): Promise<MessagingParticipant>;
+  sendMessage(igsid: string, message: string, accessToken: string): Promise<SendReplyResult>;
+  /**
+   * Only succeeds once the participant has sent at least one inbound DM - Instagram gates this
+   * lookup behind that same consent window as getUserProfileByIgsid. Callers must not invoke this
+   * before an inbound message has been received from the participant.
+   */
+  getFollowStatus(igsid: string, accessToken: string): Promise<{ followsBusiness: boolean }>;
 }

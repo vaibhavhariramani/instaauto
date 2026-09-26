@@ -1,5 +1,10 @@
 import type { Request, Response } from 'express';
-import type { EmailLoginInput, EmailRegisterInput, GoogleLoginInput } from '@instaauto/shared';
+import type {
+  AppleLoginInput,
+  EmailLoginInput,
+  EmailRegisterInput,
+  GoogleLoginInput,
+} from '@instaauto/shared';
 import * as authService from '../services/authService';
 import { toUserDto } from '../utils/mappers';
 import { REFRESH_COOKIE_MAX_AGE_MS, REFRESH_COOKIE_NAME } from '../lib/jwt';
@@ -28,6 +33,17 @@ export async function googleLogin(req: Request, res: Response): Promise<void> {
     userAgent: req.headers['user-agent'],
     ip: req.ip,
   });
+  res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions());
+  res.json({ accessToken, refreshToken, user: toUserDto(user) });
+}
+
+export async function appleLogin(req: Request, res: Response): Promise<void> {
+  const { identityToken, fullName } = req.body as AppleLoginInput;
+  const { accessToken, refreshToken, user } = await authService.loginWithApple(
+    identityToken,
+    fullName,
+    { userAgent: req.headers['user-agent'], ip: req.ip },
+  );
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, cookieOptions());
   res.json({ accessToken, refreshToken, user: toUserDto(user) });
 }

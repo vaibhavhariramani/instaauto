@@ -23,10 +23,33 @@ export async function sendAutomationReply(
   account: InstagramAccount,
   comment: Comment,
 ): Promise<void> {
-  const content = renderTemplate(automation.replyMessage, {
+  // Instagram won't let us check follow status until this person has sent an inbound DM (a
+  // comment/our own private reply doesn't establish that consent window) - so the CTA can't be
+  // gated on the very first message. Send the follow-ask instead; conversationService resolves
+  // the gate (and sends the real replyMessage) once they reply and the check becomes possible.
+  const gated = automation.requireFollowBeforeCta && automation.followGateMessage;
+  const content = renderTemplate(gated ? automation.followGateMessage! : automation.replyMessage, {
     username: comment.commenterUsername,
     reelTitle: automation.reelCaption ?? undefined,
   });
+
+  if (gated) {
+    await prisma.followGateState.upsert({
+      where: {
+        instagramAccountId_participantIgUserId_automationId: {
+          instagramAccountId: account.id,
+          participantIgUserId: comment.commenterIgUserId,
+          automationId: automation.id,
+        },
+      },
+      create: {
+        instagramAccountId: account.id,
+        participantIgUserId: comment.commenterIgUserId,
+        automationId: automation.id,
+      },
+      update: { asksSent: 1 },
+    });
+  }
 
   if (automation.publicReplyEnabled && automation.publicReplyMessage) {
     const publicReply = renderTemplate(automation.publicReplyMessage, {
@@ -116,6 +139,88 @@ async function attemptSend(
       'DM delivery failed',
       `Could not message @${message.recipientUsername} — ${errorMessage}`,
     );
+  }
+}
+
+const MAX_FOLLOW_GATE_ASKS = 2;
+
+/**
+ * Called from conversationService.processMessagingEvent for every INBOUND message — this is the
+ * only point Instagram lets us check is_user_follow_business (see sendAutomationReply). Resolves
+ * every open follow-gate for this participant: sends the real CTA if they now follow (or we've
+ * already asked twice), otherwise resends the follow-ask and counts the attempt.
+ */
+export async function resolveFollowGatesForParticipant(
+  instagramAccountId: string,
+  participantIgUserId: string,
+  participantUsername: string,
+  accessToken: string,
+): Promise<void> {
+  const gates = await prisma.followGateState.findMany({
+    where: { instagramAccountId, participantIgUserId },
+    include: { automation: true },
+  });
+  if (gates.length === 0) return;
+
+  for (const gate of gates) {
+    const { automation } = gate;
+    const { followsBusiness } = await instagramService.getFollowStatus(
+      participantIgUserId,
+      accessToken,
+    );
+    const giveUp = gate.asksSent >= MAX_FOLLOW_GATE_ASKS;
+    const sendCta = followsBusiness || giveUp;
+
+    const content = renderTemplate(
+      sendCta ? automation.replyMessage : automation.followGateMessage!,
+      {
+        username: participantUsername,
+        reelTitle: automation.reelCaption ?? undefined,
+      },
+    );
+
+    try {
+      await instagramService.sendMessage(participantIgUserId, content, accessToken);
+      await prisma.message.create({
+        data: {
+          userId: automation.userId,
+          automationId: automation.id,
+          instagramAccountId,
+          recipientIgUserId: participantIgUserId,
+          recipientUsername: participantUsername,
+          content,
+          status: MessageStatus.SENT,
+          sentAt: new Date(),
+          deliveredAt: new Date(),
+        },
+      });
+
+      if (sendCta) {
+        await prisma.$transaction([
+          prisma.automation.update({
+            where: { id: automation.id },
+            data: { totalDMsSent: { increment: 1 } },
+          }),
+          prisma.followGateState.delete({ where: { id: gate.id } }),
+        ]);
+      } else {
+        await prisma.followGateState.update({
+          where: { id: gate.id },
+          data: { asksSent: { increment: 1 } },
+        });
+      }
+      await bumpDailyCounters(automation.userId, { dmsSent: 1 });
+    } catch (err) {
+      const errorMessage = (err as Error).message || 'Unknown error sending DM';
+      logger.warn({ err: errorMessage, gateId: gate.id }, 'Follow-gate message send failed');
+      await bumpDailyCounters(automation.userId, { dmsFailed: 1 });
+      await notificationService.create(
+        automation.userId,
+        NotificationType.DM_FAILED,
+        'DM delivery failed',
+        `Could not message @${participantUsername} — ${errorMessage}`,
+      );
+    }
   }
 }
 

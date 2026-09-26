@@ -1,6 +1,8 @@
 import { InstagramAccountStatus, MessageDirection } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { instagramService } from './instagramService';
+import { decryptAccountToken } from './instagramConnectService';
+import { resolveFollowGatesForParticipant } from './dmService';
 import { ApiError } from '../middleware/errors';
 
 interface MessagingEventInput {
@@ -32,7 +34,10 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
   const preview = event.content.slice(0, 200);
 
   if (!conversation) {
-    const profile = await instagramService.getUserProfileByIgsid(event.otherPartyIgUserId, event.accessToken);
+    const profile = await instagramService.getUserProfileByIgsid(
+      event.otherPartyIgUserId,
+      event.accessToken,
+    );
     conversation = await prisma.conversation.create({
       data: {
         instagramAccountId: event.instagramAccountId,
@@ -46,7 +51,11 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
   } else {
     conversation = await prisma.conversation.update({
       where: { id: conversation.id },
-      data: { lastMessageAt: event.timestamp, lastMessagePreview: preview, lastMessageDirection: event.direction },
+      data: {
+        lastMessageAt: event.timestamp,
+        lastMessagePreview: preview,
+        lastMessageDirection: event.direction,
+      },
     });
   }
 
@@ -59,6 +68,17 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
       createdAt: event.timestamp,
     },
   });
+
+  // An inbound reply is the earliest point Instagram allows a follow-status check (see
+  // dmService.sendAutomationReply) - this is where any pending "please follow" gate resolves.
+  if (event.direction === MessageDirection.INBOUND) {
+    await resolveFollowGatesForParticipant(
+      event.instagramAccountId,
+      event.otherPartyIgUserId,
+      conversation.participantUsername,
+      event.accessToken,
+    );
+  }
 }
 
 async function requireConnectedAccount(userId: string, instagramAccountId: string) {
@@ -94,4 +114,42 @@ export async function listMessagesForConversation(
   });
 
   return { conversation, messages };
+}
+
+export async function sendMessageToConversation(
+  userId: string,
+  instagramAccountId: string,
+  conversationId: string,
+  content: string,
+) {
+  const account = await requireConnectedAccount(userId, instagramAccountId);
+  const conversation = await prisma.conversation.findFirst({
+    where: { id: conversationId, instagramAccountId },
+  });
+  if (!conversation) throw ApiError.notFound('Conversation not found');
+
+  const token = decryptAccountToken(account);
+  const sent = await instagramService.sendMessage(conversation.participantIgUserId, content, token);
+
+  const [message] = await prisma.$transaction([
+    prisma.directMessage.create({
+      data: {
+        conversationId,
+        direction: MessageDirection.OUTBOUND,
+        content,
+        externalMessageId: sent.externalMessageId,
+        createdAt: new Date(),
+      },
+    }),
+    prisma.conversation.update({
+      where: { id: conversationId },
+      data: {
+        lastMessageAt: new Date(),
+        lastMessagePreview: content.slice(0, 200),
+        lastMessageDirection: MessageDirection.OUTBOUND,
+      },
+    }),
+  ]);
+
+  return message;
 }

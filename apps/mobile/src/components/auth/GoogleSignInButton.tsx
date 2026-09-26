@@ -21,7 +21,7 @@ export function GoogleSignInButton({ onSuccess }: { onSuccess?: () => void }) {
 
   if (!webClientId) {
     return (
-      <Text className="text-center text-xs text-neutral-400 dark:text-neutral-500">
+      <Text className="text-center text-xs text-neutral-600 dark:text-neutral-500">
         Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID (and _IOS_CLIENT_ID) to enable Google Sign-In.
       </Text>
     );

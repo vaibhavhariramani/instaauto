@@ -37,6 +37,16 @@ export function useGoogleLogin() {
   });
 }
 
+export function useAppleLogin() {
+  return useMutation({
+    mutationFn: async (input: { identityToken: string; fullName: string | null }) => {
+      const { data } = await apiClient.post<AuthTokensDto>('/auth/apple', input);
+      return data;
+    },
+    onSuccess: adoptSession,
+  });
+}
+
 export function useEmailLogin() {
   return useMutation({
     mutationFn: async (input: EmailLoginInput) => {
@@ -69,9 +79,13 @@ export function useSwitchAccount() {
       return data;
     },
     onSuccess: (data) => {
-      // The previous account's cached automations/dashboard/etc. don't belong to this user.
+      // The previous account's cached automations/dashboard/etc. don't belong to this user -
+      // clear() drops it, then invalidateQueries() forces every still-mounted screen (dashboard,
+      // automations, analytics tabs all stay mounted under the bottom-tab navigator) to refetch
+      // right away instead of quietly showing whatever the persisted-cache restore raced in with.
       queryClient.clear();
       adoptSession(data);
+      queryClient.invalidateQueries();
     },
     onError: (_err, userId) => {
       // The saved refresh token was rejected (revoked/expired elsewhere) - drop the dead entry.

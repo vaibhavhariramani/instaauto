@@ -108,7 +108,7 @@ export function ActivityBarChart({ data }: { data: ActivityPoint[] }) {
               className={`text-[10px] ${
                 selected === i
                   ? 'font-semibold text-neutral-900 dark:text-neutral-50'
-                  : 'text-neutral-400 dark:text-neutral-500'
+                  : 'text-neutral-600 dark:text-neutral-500'
               }`}
               numberOfLines={1}
             >
@@ -121,7 +121,7 @@ export function ActivityBarChart({ data }: { data: ActivityPoint[] }) {
       <View className="mt-3 min-h-[20px] flex-row items-center justify-center gap-3 border-t border-neutral-100 pt-2 dark:border-neutral-800">
         {active ? (
           <>
-            <Text className="text-xs text-neutral-500 dark:text-neutral-400">{active.label}:</Text>
+            <Text className="text-xs text-neutral-600 dark:text-neutral-400">{active.label}:</Text>
             <Text className="text-xs font-medium text-neutral-900 dark:text-neutral-50">
               {active.commentsDetected} comments
             </Text>
@@ -135,7 +135,7 @@ export function ActivityBarChart({ data }: { data: ActivityPoint[] }) {
             )}
           </>
         ) : (
-          <Text className="text-xs text-neutral-400 dark:text-neutral-500">
+          <Text className="text-xs text-neutral-600 dark:text-neutral-500">
             Tap a bar for details
           </Text>
         )}
@@ -148,7 +148,7 @@ function Legend({ color, label }: { color: string; label: string }) {
   return (
     <View className="flex-row items-center gap-1.5">
       <View className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-      <Text className="text-xs text-neutral-500 dark:text-neutral-400">{label}</Text>
+      <Text className="text-xs text-neutral-600 dark:text-neutral-400">{label}</Text>
     </View>
   );
 }

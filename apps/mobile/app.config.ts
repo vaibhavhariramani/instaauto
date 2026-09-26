@@ -27,6 +27,13 @@ const config: ExpoConfig = {
     icon: './assets/expo.icon',
     bundleIdentifier: 'com.vaibhavhariramani.instaauto',
     supportsTablet: false,
+    usesAppleSignIn: true,
+    infoPlist: {
+      // Only standard HTTPS/TLS is used - no custom or non-exempt encryption,
+      // so this is exempt and skips App Store Connect's export compliance
+      // question on every submission.
+      ITSAppUsesNonExemptEncryption: false,
+    },
   },
   android: {
     package: 'com.vaibhavhariramani.instaauto',
@@ -58,6 +65,8 @@ const config: ExpoConfig = {
     ],
     'expo-secure-store',
     'expo-notifications',
+    'expo-apple-authentication',
+    './plugins/withDisableScriptSandboxing',
     // The plugin hard-requires a real iosUrlScheme at prebuild time (an
     // empty options object throws), so it's only added once
     // EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID is set - until then the app builds

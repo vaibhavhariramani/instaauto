@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AutomationDto, AutomationInput, UpdateAutomationInput } from '@instaauto/shared';
 import { apiClient } from './client';
 import { queryKeys } from '@/constants/queryKeys';
+import { useActiveUserId } from '@/store/authStore';
 
 export function useAutomations() {
+  const userId = useActiveUserId();
   return useQuery({
-    queryKey: queryKeys.automations,
+    queryKey: [...queryKeys.automations, userId],
     queryFn: async () => {
       const { data } = await apiClient.get<AutomationDto[]>('/automation');
       return data;
@@ -14,8 +16,9 @@ export function useAutomations() {
 }
 
 export function useAutomation(id: string | undefined) {
+  const userId = useActiveUserId();
   return useQuery({
-    queryKey: queryKeys.automation(id ?? ''),
+    queryKey: [...queryKeys.automation(id ?? ''), userId],
     queryFn: async () => {
       const { data } = await apiClient.get<AutomationDto>(`/automation/${id}`);
       return data;

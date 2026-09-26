@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { emailLoginSchema, emailRegisterSchema, googleLoginSchema } from '@instaauto/shared';
+import {
+  appleLoginSchema,
+  emailLoginSchema,
+  emailRegisterSchema,
+  googleLoginSchema,
+} from '@instaauto/shared';
 import { validateRequest } from '../middleware/validateRequest';
 import { asyncHandler } from '../middleware/asyncHandler';
 import { authRateLimiter, refreshRateLimiter } from '../middleware/rateLimiter';
@@ -12,6 +17,12 @@ authRouter.post(
   authRateLimiter,
   validateRequest({ body: googleLoginSchema }),
   asyncHandler(authController.googleLogin),
+);
+authRouter.post(
+  '/apple',
+  authRateLimiter,
+  validateRequest({ body: appleLoginSchema }),
+  asyncHandler(authController.appleLogin),
 );
 authRouter.post(
   '/register',

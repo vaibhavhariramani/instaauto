@@ -58,7 +58,7 @@ export default function OnboardingScreen() {
       <View className="flex-row justify-end px-6 pt-2">
         {!isLastSlide && (
           <Pressable accessibilityRole="button" onPress={finish} hitSlop={12}>
-            <Text className="text-sm font-medium text-neutral-400 dark:text-neutral-500">Skip</Text>
+            <Text className="text-sm font-medium text-neutral-600 dark:text-neutral-500">Skip</Text>
           </Pressable>
         )}
       </View>
@@ -125,7 +125,7 @@ function Slide({
         </Text>
       </Animated.View>
       <Animated.View entering={FadeInDown.delay(140).duration(400)}>
-        <Text className="text-center text-base leading-6 text-neutral-500 dark:text-neutral-400">
+        <Text className="text-center text-base leading-6 text-neutral-600 dark:text-neutral-400">
           {description}
         </Text>
       </Animated.View>

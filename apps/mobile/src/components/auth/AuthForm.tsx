@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
 import { useEmailLogin, useEmailRegister } from '@/api/auth';
 import { extractErrorMessage } from '@/api/client';
 
@@ -20,7 +21,7 @@ function flattenZodErrors(error: { issues: { path: (string | number)[]; message:
   return out;
 }
 
-/** Email/password + Google sign-in form, shared by the initial login screen and "add account". */
+/** Email/password + Apple/Google sign-in form, shared by the initial login screen and "add account". */
 export function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
   const [mode, setMode] = useState<Mode>('login');
   const [name, setName] = useState('');
@@ -85,6 +86,7 @@ export function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
         />
       )}
       <TextField
+        testID="auth-email-input"
         label="Email"
         autoComplete="email"
         autoCapitalize="none"
@@ -94,6 +96,7 @@ export function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
         error={fieldErrors.email}
       />
       <TextField
+        testID="auth-password-input"
         label="Password"
         autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
         secureTextEntry
@@ -105,6 +108,7 @@ export function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
       {formError && <Text className="text-sm text-red-600 dark:text-red-400">{formError}</Text>}
 
       <Button
+        testID="auth-submit-button"
         label={mode === 'login' ? 'Sign in' : 'Create account'}
         onPress={onSubmit}
         loading={pending}
@@ -113,11 +117,12 @@ export function AuthForm({ onSuccess }: { onSuccess?: () => void }) {
 
       <View className="flex-row items-center gap-3 py-1">
         <View className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
-        <Text className="text-xs text-neutral-400 dark:text-neutral-500">or continue with</Text>
+        <Text className="text-xs text-neutral-600 dark:text-neutral-500">or continue with</Text>
         <View className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" />
       </View>
 
       <GoogleSignInButton onSuccess={onSuccess} />
+      <AppleSignInButton onSuccess={onSuccess} />
     </View>
   );
 }

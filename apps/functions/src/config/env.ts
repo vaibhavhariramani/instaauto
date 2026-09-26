@@ -24,6 +24,10 @@ const envSchema = z.object({
   // valid token audiences so web and mobile sign-in work at the same time.
   GOOGLE_MOBILE_CLIENT_ID: z.string().optional(),
 
+  // Sign in with Apple verifies the identity token's audience against this - the
+  // native app's bundle ID (not a services ID, since this is the native iOS flow).
+  APPLE_BUNDLE_ID: z.string().default('com.vaibhavhariramani.instaauto'),
+
   INSTAGRAM_MOCK_MODE: boolFromString,
 
   META_APP_ID: z.string().optional(),

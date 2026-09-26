@@ -13,6 +13,4 @@ export const queryKeys = {
   dashboardStats: ['analytics', 'dashboard'] as const,
   analytics: (params: unknown) => ['analytics', params] as const,
   notifications: (page: number) => ['notifications', page] as const,
-  billingPlans: ['billing', 'plans'] as const,
-  billingInvoices: ['billing', 'invoices'] as const,
 };

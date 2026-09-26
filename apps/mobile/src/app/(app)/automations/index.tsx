@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -43,6 +44,9 @@ function DeleteAction({
 function AutomationTile({ automation }: { automation: AutomationDto }) {
   const update = useUpdateAutomation(automation.id);
   const remove = useDeleteAutomation();
+  // A stored thumbnail URL that's still broken after the refetch (rate-limited account,
+  // deleted reel) should fall back to the placeholder icon instead of a broken-image box.
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
 
   const confirmDelete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -62,9 +66,10 @@ function AutomationTile({ automation }: { automation: AutomationDto }) {
       >
         <View className="gap-2 rounded-2xl border border-neutral-200/70 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-900">
           <Pressable onPress={() => router.push(`/automations/${automation.id}`)}>
-            {automation.reelThumbnailUrl ? (
+            {automation.reelThumbnailUrl && !thumbnailFailed ? (
               <Image
                 source={{ uri: automation.reelThumbnailUrl }}
+                onError={() => setThumbnailFailed(true)}
                 className="aspect-square w-full rounded-xl bg-neutral-100 dark:bg-neutral-800"
               />
             ) : (
@@ -79,7 +84,7 @@ function AutomationTile({ automation }: { automation: AutomationDto }) {
               {automation.name}
             </Text>
             <Text
-              className="px-0.5 text-xs text-neutral-400 dark:text-neutral-500"
+              className="px-0.5 text-xs text-neutral-600 dark:text-neutral-500"
               numberOfLines={1}
             >
               {automation.totalTriggers} triggers · {automation.totalDMsSent} sent
@@ -107,8 +112,30 @@ function AutomationTile({ automation }: { automation: AutomationDto }) {
 }
 
 export default function AutomationsListScreen() {
-  const { data, isLoading, refetch, isRefetching } = useAutomations();
+  const { data, isLoading, refetch } = useAutomations();
   const insets = useSafeAreaInsets();
+
+  const [manualRefreshing, setManualRefreshing] = useState(false);
+  const onManualRefresh = async () => {
+    setManualRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setManualRefreshing(false);
+    }
+  };
+
+  // The list returns whatever reel thumbnail URL was last stored, then kicks off a background
+  // refresh against the live Graph API (see automationService.listAutomations) - that refresh
+  // can't land in THIS response, only the next fetch. Older automations' stored URLs are usually
+  // already-expired signed CDN links by the time anyone reopens this screen, so without this the
+  // thumbnails stay broken until a manual pull-to-refresh. One silent refetch, timed past the
+  // backend's refresh window, is enough to pick up the freshened URLs automatically.
+  useEffect(() => {
+    const t = setTimeout(() => refetch(), 3000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isLoading) {
     return (
@@ -126,8 +153,8 @@ export default function AutomationsListScreen() {
         numColumns={2}
         contentContainerClassName="p-2.5"
         contentContainerStyle={{ paddingBottom: 150 }}
-        refreshing={isRefetching}
-        onRefresh={refetch}
+        refreshing={manualRefreshing}
+        onRefresh={onManualRefresh}
         renderItem={({ item }) => <AutomationTile automation={item} />}
         ListEmptyComponent={
           <View className="items-center gap-2 py-16">
@@ -137,7 +164,7 @@ export default function AutomationsListScreen() {
             <Text className="text-[15px] font-medium text-neutral-700 dark:text-neutral-300">
               No automations yet
             </Text>
-            <Text className="px-8 text-center text-xs text-neutral-400 dark:text-neutral-500">
+            <Text className="px-8 text-center text-xs text-neutral-600 dark:text-neutral-500">
               Create one from a Reel on your connected Instagram account.
             </Text>
           </View>

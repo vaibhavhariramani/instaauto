@@ -22,7 +22,7 @@ export default function LoginScreen() {
               <Text className="text-2xl font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
                 Welcome to InstaAuto
               </Text>
-              <Text className="text-center text-[15px] leading-5 text-neutral-500 dark:text-neutral-400">
+              <Text className="text-center text-[15px] leading-5 text-neutral-600 dark:text-neutral-400">
                 Automate Instagram DM replies to comments
               </Text>
             </View>

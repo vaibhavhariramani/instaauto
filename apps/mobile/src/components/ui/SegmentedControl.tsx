@@ -26,7 +26,7 @@ export function SegmentedControl<T extends string>({
               className={`text-sm font-medium ${
                 active
                   ? 'text-neutral-900 dark:text-neutral-50'
-                  : 'text-neutral-500 dark:text-neutral-400'
+                  : 'text-neutral-600 dark:text-neutral-400'
               }`}
             >
               {option.label}

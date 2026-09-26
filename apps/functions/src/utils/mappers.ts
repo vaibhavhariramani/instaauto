@@ -67,6 +67,8 @@ export function toAutomationDto(automation: Automation): AutomationDto {
     templateId: automation.templateId,
     publicReplyEnabled: automation.publicReplyEnabled,
     publicReplyMessage: automation.publicReplyMessage,
+    requireFollowBeforeCta: automation.requireFollowBeforeCta,
+    followGateMessage: automation.followGateMessage,
     dmOncePerUser: automation.dmOncePerUser,
     ignoreCreatorComments: automation.ignoreCreatorComments,
     isActive: automation.isActive,

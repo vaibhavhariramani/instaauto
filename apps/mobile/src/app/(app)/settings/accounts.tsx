@@ -52,7 +52,7 @@ export default function SwitchAccountScreen() {
                   <Text className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                     {account.name}
                   </Text>
-                  <Text className="text-xs text-neutral-500 dark:text-neutral-400">
+                  <Text className="text-xs text-neutral-600 dark:text-neutral-400">
                     {account.email}
                   </Text>
                 </View>
