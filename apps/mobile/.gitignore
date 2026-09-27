@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# local build artifacts (AAB/APK) - too large for git, rebuild via android/gradlew
+/build-output
