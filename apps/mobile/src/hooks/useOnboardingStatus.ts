@@ -38,9 +38,17 @@ export function useOnboardingBootstrap() {
 
   useEffect(() => {
     let cancelled = false;
-    getStored().then((value) => {
-      if (!cancelled) setHasOnboarded(value === 'true');
-    });
+    getStored()
+      .then((value) => {
+        if (!cancelled) setHasOnboarded(value === 'true');
+      })
+      .catch(() => {
+        // A SecureStore read failure (corrupted/invalidated Keystore entry, etc.) must never
+        // leave hasOnboarded stuck at null forever - that permanently blocks RootNavigator's
+        // isReady check with no error shown, since it just renders null. Treat as "not
+        // onboarded" (safe default - worst case the user re-sees onboarding once).
+        if (!cancelled) setHasOnboarded(false);
+      });
     return () => {
       cancelled = true;
     };
