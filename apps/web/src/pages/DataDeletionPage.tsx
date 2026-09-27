@@ -17,11 +17,11 @@ export default function DataDeletionPage() {
             Option 1 — Disconnect from Instagram directly
           </h2>
           <p className="mt-2">
-            Open Instagram, go to <strong className="text-foreground">Settings → Apps and
-            Websites</strong>, find <strong className="text-foreground">Dhandha App-IG</strong>,
-            and remove its access. This immediately revokes the access token InstaAuto holds for
-            your account. Then follow Option 2 to remove the remaining account data from our
-            database.
+            Open Instagram, go to{' '}
+            <strong className="text-foreground">Settings → Apps and Websites</strong>, find{' '}
+            <strong className="text-foreground">Creator AutoDM</strong>, and remove its access. This
+            immediately revokes the access token InstaAuto holds for your account. Then follow
+            Option 2 to remove the remaining account data from our database.
           </p>
         </section>
 
@@ -38,10 +38,15 @@ export default function DataDeletionPage() {
             <strong className="text-foreground">&quot;Delete my data&quot;</strong>. We will:
           </p>
           <ul className="mt-2 list-disc space-y-2 pl-5">
-            <li>Permanently delete your user account, connected Instagram account records, and encrypted access tokens.</li>
+            <li>
+              Permanently delete your user account, connected Instagram account records, and
+              encrypted access tokens.
+            </li>
             <li>Permanently delete your automations, message logs, comment logs, and analytics.</li>
             <li>Cancel any active subscription and stop future billing.</li>
-            <li>Confirm completion by email within 30 days, as required by Meta Platform policy.</li>
+            <li>
+              Confirm completion by email within 30 days, as required by Meta Platform policy.
+            </li>
           </ul>
         </section>
 
