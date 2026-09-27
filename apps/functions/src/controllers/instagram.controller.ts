@@ -13,7 +13,16 @@ export async function listAccounts(req: AuthedRequest, res: Response): Promise<v
   res.json(accounts.map(toInstagramAccountDto));
 }
 
-function redirectTarget(returnTo: connectService.OAuthReturnTo, connected: boolean): string {
+function redirectTarget(
+  returnTo: connectService.OAuthReturnTo,
+  connected: boolean,
+  platform: connectService.ConnectPlatform,
+): string {
+  if (platform === 'mobile') {
+    // Same custom scheme covers both the iOS and Android builds - they share one Expo
+    // codebase/bundle identifier, so there's no separate "which mobile platform" branch needed.
+    return `${config.MOBILE_APP_SCHEME}://instagram-connect?connected=${connected}`;
+  }
   const base = returnTo === 'settings' ? '/instagram' : '/onboarding/instagram';
   return `${config.FRONTEND_URL}${base}?connected=${connected}`;
 }
@@ -21,29 +30,32 @@ function redirectTarget(returnTo: connectService.OAuthReturnTo, connected: boole
 export async function connect(req: AuthedRequest, res: Response): Promise<void> {
   const returnTo: connectService.OAuthReturnTo =
     req.query.returnTo === 'settings' ? 'settings' : 'onboarding';
+  const platform: connectService.ConnectPlatform =
+    req.query.platform === 'mobile' ? 'mobile' : 'web';
   if (config.INSTAGRAM_MOCK_MODE) {
     const account = await connectService.connectMockAccount(req.userId);
     res.json({ mode: 'mock', account: toInstagramAccountDto(account) });
     return;
   }
-  const authUrl = connectService.getAuthorizationUrl(req.userId, returnTo);
+  const authUrl = connectService.getAuthorizationUrl(req.userId, returnTo, platform);
   res.json({ mode: 'redirect', authUrl });
 }
 
 export async function oauthCallback(req: Request, res: Response): Promise<void> {
   const { code, state } = req.query as unknown as InstagramOAuthCallbackInput;
   // Parsed once up front (outside the try) so a failure during token exchange still redirects
-  // back to whichever page initiated the connect, instead of always bouncing to onboarding.
+  // back to whichever page/app initiated the connect, instead of always bouncing to onboarding.
   let returnTo: connectService.OAuthReturnTo = 'onboarding';
+  let platform: connectService.ConnectPlatform = 'web';
   try {
-    returnTo = connectService.verifyOAuthState(state).returnTo;
+    ({ returnTo, platform } = connectService.verifyOAuthState(state));
     await connectService.handleOAuthCallback(code, state);
-    res.redirect(redirectTarget(returnTo, true));
+    res.redirect(redirectTarget(returnTo, true, platform));
   } catch (err) {
     const detail =
       (err as { response?: { data?: unknown } })?.response?.data ?? (err as Error)?.message;
     logger.error({ err: detail }, 'Instagram OAuth callback failed');
-    res.redirect(redirectTarget(returnTo, false));
+    res.redirect(redirectTarget(returnTo, false, platform));
   }
 }
 
