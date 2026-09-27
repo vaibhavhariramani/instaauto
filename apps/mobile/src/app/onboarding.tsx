@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dimensions, FlatList, Pressable, Text, View, type ViewToken } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -135,7 +135,10 @@ function Slide({
 
 function Dot({ active }: { active: boolean }) {
   const progress = useSharedValue(active ? 1 : 0);
-  progress.value = withTiming(active ? 1 : 0, { duration: 250 });
+
+  useEffect(() => {
+    progress.value = withTiming(active ? 1 : 0, { duration: 250 });
+  }, [active, progress]);
 
   const style = useAnimatedStyle(() => ({
     width: interpolate(progress.value, [0, 1], [8, 24]),
