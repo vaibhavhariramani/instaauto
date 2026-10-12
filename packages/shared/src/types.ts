@@ -4,6 +4,7 @@ import type {
   MessageDirection,
   MessageStatus,
   NotificationType,
+  PostType,
   SubscriptionPlan,
   SubscriptionStatus,
   TemplateCategory,
@@ -65,6 +66,18 @@ export interface ReelDto {
   timestamp: string;
 }
 
+/** Carousel/single-image feed posts, fetched separately from Reels for post automations. */
+export interface PostMediaDto {
+  id: string;
+  postType: Extract<PostType, 'CAROUSEL' | 'POST'>;
+  thumbnailUrl: string;
+  permalink: string;
+  caption: string;
+  commentsCount: number;
+  likeCount: number;
+  timestamp: string;
+}
+
 export interface RecentCommentDto {
   id: string;
   text: string;
@@ -79,6 +92,7 @@ export interface AutomationDto {
   id: string;
   name: string;
   instagramAccountId: string;
+  postType: PostType;
   reelId: string;
   reelThumbnailUrl: string | null;
   reelPermalink: string | null;

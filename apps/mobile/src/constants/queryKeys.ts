@@ -2,6 +2,7 @@ export const queryKeys = {
   me: ['me'] as const,
   instagramAccounts: ['instagram', 'accounts'] as const,
   reels: (accountId: string) => ['instagram', 'reels', accountId] as const,
+  posts: (accountId: string) => ['instagram', 'posts', accountId] as const,
   recentComments: (accountId: string) => ['instagram', 'comments', accountId] as const,
   conversations: (accountId: string) => ['conversations', accountId] as const,
   conversationMessages: (accountId: string, conversationId: string) =>

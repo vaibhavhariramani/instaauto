@@ -28,6 +28,13 @@ export interface ReelSummary {
   timestamp: string;
 }
 
+export type MediaType = 'REEL' | 'CAROUSEL' | 'POST';
+
+/** Any piece of media in the account's feed - Reel, carousel, or single image/video post. */
+export interface MediaSummary extends ReelSummary {
+  mediaType: MediaType;
+}
+
 export interface SendReplyResult {
   externalMessageId: string;
 }
@@ -54,7 +61,8 @@ export interface InstagramService {
   getInstagramBusinessAccountId(pageId: string, pageAccessToken: string): Promise<string | null>;
   getInstagramProfile(igUserId: string, accessToken: string): Promise<InstagramProfile>;
   subscribePageToWebhooks(pageId: string, pageAccessToken: string): Promise<void>;
-  getReels(igUserId: string, accessToken: string): Promise<ReelSummary[]>;
+  /** All feed media (Reels, carousels, single posts) in one call - callers filter by mediaType. */
+  getMedia(igUserId: string, accessToken: string): Promise<MediaSummary[]>;
   sendPrivateReply(
     commentId: string,
     message: string,

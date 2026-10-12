@@ -4,6 +4,7 @@ import { config } from '../config/env';
 import { toInstagramAccountDto } from '../utils/mappers';
 import * as connectService from '../services/instagramConnectService';
 import { listReelsForAccount } from '../services/reelService';
+import { listPostsForAccount } from '../services/postService';
 import * as commentService from '../services/commentService';
 import type { AuthedRequest } from '../middleware/auth';
 import { logger } from '../lib/logger';
@@ -66,6 +67,11 @@ export async function disconnect(req: AuthedRequest, res: Response): Promise<voi
 
 export async function reels(req: AuthedRequest, res: Response): Promise<void> {
   const data = await listReelsForAccount(req.userId, req.params.id!);
+  res.json(data);
+}
+
+export async function posts(req: AuthedRequest, res: Response): Promise<void> {
+  const data = await listPostsForAccount(req.userId, req.params.id!);
   res.json(data);
 }
 

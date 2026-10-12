@@ -24,6 +24,11 @@ export default function AutomationsStackLayout() {
       />
       <Stack.Screen name="[id]" options={{ title: '' }} />
       <Stack.Screen name="new" options={{ title: 'New automation', presentation: 'modal' }} />
+      <Stack.Screen name="posts" options={{ title: 'Post automations' }} />
+      <Stack.Screen
+        name="new-post"
+        options={{ title: 'New post automation', presentation: 'modal' }}
+      />
     </Stack>
   );
 }

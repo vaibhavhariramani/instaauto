@@ -1,119 +1,17 @@
-import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  Pressable,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import Animated, { type SharedValue, useAnimatedStyle } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { AutomationDto } from '@instaauto/shared';
 
-import { StatusPill } from '@/components/ui/StatusPill';
-import { useAutomations, useDeleteAutomation, useUpdateAutomation } from '@/api/automations';
-
-function DeleteAction({
-  progress,
-  onPress,
-}: {
-  progress: SharedValue<number>;
-  onPress: () => void;
-}) {
-  const style = useAnimatedStyle(() => ({ opacity: Math.min(progress.value, 1) }));
-  return (
-    <Animated.View style={style} className="mb-3 ml-2 justify-center">
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPress}
-        className="h-full w-16 items-center justify-center rounded-2xl bg-red-600 active:bg-red-700"
-      >
-        <Ionicons name="trash-outline" size={18} color="white" />
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-function AutomationTile({ automation }: { automation: AutomationDto }) {
-  const update = useUpdateAutomation(automation.id);
-  const remove = useDeleteAutomation();
-  // A stored thumbnail URL that's still broken after the refetch (rate-limited account,
-  // deleted reel) should fall back to the placeholder icon instead of a broken-image box.
-  const [thumbnailFailed, setThumbnailFailed] = useState(false);
-
-  const confirmDelete = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert('Delete automation?', `"${automation.name}" cannot be recovered once deleted.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => remove.mutate(automation.id) },
-    ]);
-  };
-
-  return (
-    <View className="w-1/2 p-1.5">
-      <Swipeable
-        renderRightActions={(progress) => (
-          <DeleteAction progress={progress} onPress={confirmDelete} />
-        )}
-        overshootRight={false}
-      >
-        <View className="gap-2 rounded-2xl border border-neutral-200/70 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-900">
-          <Pressable onPress={() => router.push(`/automations/${automation.id}`)}>
-            {automation.reelThumbnailUrl && !thumbnailFailed ? (
-              <Image
-                source={{ uri: automation.reelThumbnailUrl }}
-                onError={() => setThumbnailFailed(true)}
-                className="aspect-square w-full rounded-xl bg-neutral-100 dark:bg-neutral-800"
-              />
-            ) : (
-              <View className="aspect-square w-full items-center justify-center rounded-xl bg-neutral-100 dark:bg-neutral-800">
-                <Ionicons name="film-outline" size={26} color="#a3a3a3" />
-              </View>
-            )}
-            <Text
-              className="mt-2 px-0.5 text-sm font-semibold text-neutral-900 dark:text-neutral-50"
-              numberOfLines={1}
-            >
-              {automation.name}
-            </Text>
-            <Text
-              className="px-0.5 text-xs text-neutral-600 dark:text-neutral-500"
-              numberOfLines={1}
-            >
-              {automation.totalTriggers} triggers · {automation.totalDMsSent} sent
-            </Text>
-          </Pressable>
-          <View className="flex-row items-center justify-between px-0.5">
-            <StatusPill
-              label={automation.isActive ? 'Active' : 'Paused'}
-              tone={automation.isActive ? 'good' : 'neutral'}
-            />
-            <Switch
-              value={automation.isActive}
-              onValueChange={(value) => {
-                Haptics.selectionAsync();
-                update.mutate({ isActive: value });
-              }}
-              trackColor={{ false: '#d4d4d4', true: '#5e6ad2' }}
-              style={{ transform: [{ scale: 0.8 }] }}
-            />
-          </View>
-        </View>
-      </Swipeable>
-    </View>
-  );
-}
+import { AutomationTile } from '@/components/automations/AutomationTile';
+import { useAutomations } from '@/api/automations';
 
 export default function AutomationsListScreen() {
   const { data, isLoading, refetch } = useAutomations();
   const insets = useSafeAreaInsets();
+  const reelAutomations = useMemo(() => (data ?? []).filter((a) => a.postType === 'REEL'), [data]);
 
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const onManualRefresh = async () => {
@@ -147,8 +45,25 @@ export default function AutomationsListScreen() {
 
   return (
     <View className="flex-1 bg-neutral-50 dark:bg-neutral-950">
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => {
+          Haptics.selectionAsync();
+          router.push('/automations/posts');
+        }}
+        className="mx-4 mt-3 flex-row items-center justify-between rounded-2xl border border-neutral-200/70 bg-white px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900"
+      >
+        <View className="flex-row items-center gap-2.5">
+          <Ionicons name="images-outline" size={18} color="#5e6ad2" />
+          <Text className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+            Post automations
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color="#a3a3a3" />
+      </Pressable>
+
       <FlatList
-        data={data ?? []}
+        data={reelAutomations}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerClassName="p-2.5"

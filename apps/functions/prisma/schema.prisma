@@ -19,6 +19,15 @@ enum Theme {
   SYSTEM
 }
 
+// CAROUSEL and POST both come from Instagram's regular feed (media_product_type 'FEED'),
+// distinguished by media_type (CAROUSEL_ALBUM vs IMAGE/VIDEO) - REEL is media_product_type
+// 'REELS'. See instagramService.real.ts getMedia for the Graph API mapping.
+enum PostType {
+  REEL
+  CAROUSEL
+  POST
+}
+
 enum SubscriptionPlan {
   STARTER
   PRO
@@ -197,6 +206,10 @@ model Automation {
   instagramAccount     InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
 
   name                 String
+  // "reel" naming is historical - this field now holds any Instagram media id (Reel, carousel,
+  // or single post) once postType is anything other than REEL. See getMedia in
+  // instagramService.real.ts for how the three types are distinguished.
+  postType             PostType @default(REEL)
   reelId               String
   reelThumbnailUrl     String?
   reelPermalink        String?
