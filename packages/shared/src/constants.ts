@@ -6,8 +6,10 @@ export const PLAN_TIERS: Record<
     label: string;
     priceMonthly: number;
     priceYearly: number;
+    // -1 means unlimited (subject to system/abuse safeguards enforced elsewhere, not a quota).
     automationLimit: number;
     dmLimitPerMonth: number;
+    instagramAccountLimit: number;
     features: string[];
     stripePriceIdMonthlyEnv: string;
     stripePriceIdYearlyEnv: string;
@@ -19,6 +21,7 @@ export const PLAN_TIERS: Record<
     priceYearly: 182,
     automationLimit: 3,
     dmLimitPerMonth: 500,
+    instagramAccountLimit: 1,
     features: [
       '3 active automations',
       '500 DMs / month',
@@ -35,6 +38,7 @@ export const PLAN_TIERS: Record<
     priceYearly: 470,
     automationLimit: 15,
     dmLimitPerMonth: 5000,
+    instagramAccountLimit: 3,
     features: [
       '15 active automations',
       '5,000 DMs / month',
@@ -52,6 +56,7 @@ export const PLAN_TIERS: Record<
     priceYearly: 1238,
     automationLimit: -1,
     dmLimitPerMonth: -1,
+    instagramAccountLimit: -1,
     features: [
       'Unlimited automations',
       'Unlimited DMs',

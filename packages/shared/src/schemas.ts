@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MatchType, TemplateCategory, Theme } from './enums.js';
+import { MatchType, SubscriptionPlan, TemplateCategory, Theme } from './enums.js';
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -7,6 +7,21 @@ export const paginationQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),
 });
 export type PaginationQuery = z.infer<typeof paginationQuerySchema>;
+
+export const adminUserListQuerySchema = paginationQuerySchema.extend({
+  plan: z.nativeEnum(SubscriptionPlan).optional(),
+});
+export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
+
+export const adminUpdateUserPlanSchema = z.object({
+  plan: z.nativeEnum(SubscriptionPlan),
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Explain why you're changing this user's plan (at least 10 characters)")
+    .max(500),
+});
+export type AdminUpdateUserPlanInput = z.infer<typeof adminUpdateUserPlanSchema>;
 
 export const googleLoginSchema = z.object({
   idToken: z.string().min(10, 'Missing Google ID token'),

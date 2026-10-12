@@ -4,12 +4,18 @@ import { config, stripeConfigured } from '../config/env';
 import { prisma } from '../lib/prisma';
 import { ApiError } from '../middleware/errors';
 import { logger } from '../lib/logger';
-import { SubscriptionStatus, type SubscriptionPlan as PrismaSubscriptionPlan, type User } from '@prisma/client';
+import {
+  SubscriptionStatus,
+  type SubscriptionPlan as PrismaSubscriptionPlan,
+  type User,
+} from '@prisma/client';
 
 let stripeClient: Stripe | null = null;
 function getStripe(): Stripe {
   if (!stripeConfigured) {
-    throw ApiError.serviceUnavailable('Billing is not configured on this server yet. Set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET.');
+    throw ApiError.serviceUnavailable(
+      'Billing is not configured on this server yet. Set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET.',
+    );
   }
   if (!stripeClient) {
     stripeClient = new Stripe(config.STRIPE_SECRET_KEY!);
@@ -19,10 +25,13 @@ function getStripe(): Stripe {
 
 function priceIdFor(plan: SubscriptionPlan, billingCycle: 'monthly' | 'yearly'): string {
   const tier = PLAN_TIERS[plan];
-  const envKey = billingCycle === 'monthly' ? tier.stripePriceIdMonthlyEnv : tier.stripePriceIdYearlyEnv;
+  const envKey =
+    billingCycle === 'monthly' ? tier.stripePriceIdMonthlyEnv : tier.stripePriceIdYearlyEnv;
   const priceId = process.env[envKey];
   if (!priceId) {
-    throw ApiError.serviceUnavailable(`Stripe price id for ${plan} (${billingCycle}) is not configured (${envKey}).`);
+    throw ApiError.serviceUnavailable(
+      `Stripe price id for ${plan} (${billingCycle}) is not configured (${envKey}).`,
+    );
   }
   return priceId;
 }
@@ -30,7 +39,11 @@ function priceIdFor(plan: SubscriptionPlan, billingCycle: 'monthly' | 'yearly'):
 async function ensureStripeCustomer(user: User): Promise<string> {
   if (user.stripeCustomerId) return user.stripeCustomerId;
   const stripe = getStripe();
-  const customer = await stripe.customers.create({ email: user.email, name: user.name, metadata: { userId: user.id } });
+  const customer = await stripe.customers.create({
+    email: user.email,
+    name: user.name,
+    metadata: { userId: user.id },
+  });
   await prisma.user.update({ where: { id: user.id }, data: { stripeCustomerId: customer.id } });
   return customer.id;
 }
@@ -79,7 +92,10 @@ export async function listInvoices(user: User) {
   }));
 }
 
-export function constructWebhookEvent(rawBody: Buffer, signature: string | undefined): Stripe.Event {
+export function constructWebhookEvent(
+  rawBody: Buffer,
+  signature: string | undefined,
+): Stripe.Event {
   const stripe = getStripe();
   if (!signature) throw ApiError.badRequest('Missing Stripe-Signature header');
   return stripe.webhooks.constructEvent(rawBody, signature, config.STRIPE_WEBHOOK_SECRET!);
@@ -102,7 +118,9 @@ export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
     case 'customer.subscription.updated':
     case 'customer.subscription.deleted': {
       const subscription = event.data.object as Stripe.Subscription;
-      const user = await prisma.user.findFirst({ where: { stripeCustomerId: subscription.customer as string } });
+      const user = await prisma.user.findFirst({
+        where: { stripeCustomerId: subscription.customer as string },
+      });
       if (!user) break;
       const status =
         subscription.status === 'active'
@@ -116,6 +134,7 @@ export async function handleWebhookEvent(event: Stripe.Event): Promise<void> {
         where: { id: user.id },
         data: {
           subscriptionStatus: status,
+          subscriptionCurrentPeriodStart: new Date(subscription.current_period_start * 1000),
           subscriptionCurrentPeriodEnd: new Date(subscription.current_period_end * 1000),
         },
       });
