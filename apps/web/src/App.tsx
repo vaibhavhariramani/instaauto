@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { FullScreenLoader } from '@/components/shared/FullScreenLoader';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { ProtectedRoute, PublicOnlyRoute } from '@/components/auth/ProtectedRoute';
+import { AdminRoute } from '@/components/auth/AdminRoute';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { AuthLayout } from '@/layouts/AuthLayout';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
@@ -16,7 +17,9 @@ import { ROUTES } from '@/constants/routes';
 const LandingPage = lazy(() => import('@/pages/LandingPage'));
 const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const ProfileSetupPage = lazy(() => import('@/pages/onboarding/ProfileSetupPage'));
-const ConnectInstagramOnboardingPage = lazy(() => import('@/pages/onboarding/ConnectInstagramOnboardingPage'));
+const ConnectInstagramOnboardingPage = lazy(
+  () => import('@/pages/onboarding/ConnectInstagramOnboardingPage'),
+);
 const DashboardOverviewPage = lazy(() => import('@/pages/DashboardOverviewPage'));
 const AutomationsListPage = lazy(() => import('@/pages/AutomationsListPage'));
 const AutomationBuilderPage = lazy(() => import('@/pages/AutomationBuilderPage'));
@@ -27,6 +30,9 @@ const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
 const InstagramConnectionPage = lazy(() => import('@/pages/InstagramConnectionPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const BillingPage = lazy(() => import('@/pages/BillingPage'));
+const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'));
+const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage'));
+const AdminUserDetailPage = lazy(() => import('@/pages/admin/AdminUserDetailPage'));
 const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'));
 const DataDeletionPage = lazy(() => import('@/pages/DataDeletionPage'));
 const TermsOfServicePage = lazy(() => import('@/pages/TermsOfServicePage'));
@@ -68,6 +74,12 @@ function AppRoutes() {
           <Route path={ROUTES.instagram} element={<InstagramConnectionPage />} />
           <Route path={ROUTES.settings} element={<SettingsPage />} />
           <Route path={ROUTES.billing} element={<BillingPage />} />
+
+          <Route element={<AdminRoute />}>
+            <Route path={ROUTES.admin} element={<AdminDashboardPage />} />
+            <Route path={ROUTES.adminUsers} element={<AdminUsersPage />} />
+            <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
+          </Route>
         </Route>
       </Route>
 

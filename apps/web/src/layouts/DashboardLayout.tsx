@@ -15,6 +15,7 @@ const TITLES: Record<string, string> = {
   [ROUTES.instagram]: 'Instagram',
   [ROUTES.settings]: 'Settings',
   [ROUTES.billing]: 'Billing',
+  [ROUTES.admin]: 'Admin',
 };
 
 function resolveTitle(pathname: string): string {

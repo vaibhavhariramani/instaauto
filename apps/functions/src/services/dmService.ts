@@ -12,6 +12,7 @@ import { decryptAccountToken } from './instagramConnectService';
 import { renderTemplate } from './automationMatcher';
 import { bumpDailyCounters } from './analyticsRollup';
 import { notificationService } from './notificationService';
+import { canSendDM } from './entitlementService';
 import { logger } from '../lib/logger';
 
 function backoffMinutes(retryCount: number): number {
@@ -76,6 +77,29 @@ async function attemptSend(
   account: InstagramAccount,
 ): Promise<void> {
   const message = await prisma.message.findUniqueOrThrow({ where: { id: messageId } });
+
+  // Checked right before every send attempt (including retries) rather than only once at queue
+  // time - usage can cross the monthly limit between when a message was queued and when a retry
+  // finally runs, and the limit itself can change (plan downgrade) in between too.
+  if (!(await canSendDM(message.userId))) {
+    await prisma.message.update({
+      where: { id: messageId },
+      data: {
+        status: MessageStatus.FAILED,
+        errorMessage: 'Monthly DM limit reached for your plan',
+        nextRetryAt: null,
+      },
+    });
+    logger.info({ messageId, userId: message.userId }, 'DM blocked - monthly plan limit reached');
+    await notificationService.create(
+      message.userId,
+      NotificationType.DM_FAILED,
+      'Monthly DM limit reached',
+      `Could not message @${message.recipientUsername} — you've used all the DMs included in your plan this billing period. Upgrade your plan to send more.`,
+    );
+    return;
+  }
+
   try {
     const token = decryptAccountToken(account);
     await instagramService.sendPrivateReply(instagramCommentId, content, token);

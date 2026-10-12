@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { encryptSecret, decryptSecret } from '../lib/crypto';
 import { instagramService } from './instagramService';
 import { notificationService } from './notificationService';
+import { assertCanConnectInstagramAccount } from './entitlementService';
 import { ApiError } from '../middleware/errors';
 import { InstagramAccountStatus, NotificationType } from '@prisma/client';
 import type { InstagramAccount } from '@prisma/client';
@@ -112,6 +113,19 @@ export async function handleOAuthCallback(code: string, state: string): Promise<
     longLived.accessToken,
   );
   const igUserId = profile.igUserId;
+
+  // Only a genuinely new connection (or one being reassigned from a different/disconnected owner)
+  // counts against the plan's account limit - refreshing a token on an account this user already
+  // has CONNECTED must never be blocked or double-counted.
+  const existingAccount = await prisma.instagramAccount.findUnique({
+    where: { instagramBusinessId: igUserId },
+  });
+  const isNewForThisUser =
+    !existingAccount ||
+    existingAccount.userId !== userId ||
+    existingAccount.status !== InstagramAccountStatus.CONNECTED;
+  if (isNewForThisUser) await assertCanConnectInstagramAccount(userId);
+
   await instagramService.subscribePageToWebhooks(igUserId, longLived.accessToken);
 
   const account = await persistConnectedAccount(

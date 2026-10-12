@@ -15,4 +15,7 @@ export const queryKeys = {
   notifications: (page: number) => ['notifications', page] as const,
   billingPlans: ['billing', 'plans'] as const,
   billingInvoices: ['billing', 'invoices'] as const,
+  adminDashboard: ['admin', 'dashboard'] as const,
+  adminUsers: (params: unknown) => ['admin', 'users', params] as const,
+  adminUser: (id: string) => ['admin', 'users', id] as const,
 };

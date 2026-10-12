@@ -1,0 +1,28 @@
+# Security-sensitive paths require review from the repo owner before merge. This only actually
+# blocks merging once branch protection has "Require review from Code Owners" enabled on main
+# (see docs/security-billing-audit.md's CI/CD checklist) - this file alone doesn't enforce it.
+
+# This file and all CI/CD workflows
+/.github/                                              @vaibhavhariramani
+
+# Database schema and migrations
+/apps/functions/prisma/                                @vaibhavhariramani
+
+# Auth, authorization, and admin access control
+/apps/functions/src/middleware/                        @vaibhavhariramani
+/apps/functions/src/services/authService.ts            @vaibhavhariramani
+/apps/functions/src/services/adminService.ts            @vaibhavhariramani
+/apps/functions/src/services/entitlementService.ts      @vaibhavhariramani
+/apps/functions/scripts/                                @vaibhavhariramani
+
+# Billing and webhooks
+/apps/functions/src/services/stripeService.ts           @vaibhavhariramani
+/apps/functions/src/routes/billing.routes.ts            @vaibhavhariramani
+/apps/functions/src/routes/webhooks.routes.ts           @vaibhavhariramani
+/apps/functions/src/controllers/webhooks.controller.ts  @vaibhavhariramani
+
+# Dependency manifests
+/package.json                                           @vaibhavhariramani
+/package-lock.json                                      @vaibhavhariramani
+/apps/functions/package.json                            @vaibhavhariramani
+/apps/web/package.json                                  @vaibhavhariramani

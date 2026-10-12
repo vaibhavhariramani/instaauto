@@ -17,19 +17,29 @@ export function PricingSection() {
   return (
     <section id="pricing" className="mx-auto max-w-6xl px-6 py-24">
       <div className="mx-auto max-w-2xl text-center">
-        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Simple, transparent pricing</h2>
-        <p className="mt-4 text-muted-foreground">Start free for 14 days. Cancel anytime.</p>
+        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Simple, transparent pricing
+        </h2>
+        <p className="mt-4 text-muted-foreground">
+          Free forever on the Free plan. Upgrade or cancel anytime.
+        </p>
 
         <div className="mt-6 inline-flex items-center gap-3 rounded-full bg-muted p-1">
           <button
             onClick={() => setYearly(false)}
-            className={cn('rounded-full px-4 py-1.5 text-sm font-medium transition-colors', !yearly && 'bg-background shadow-sm')}
+            className={cn(
+              'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+              !yearly && 'bg-background shadow-sm',
+            )}
           >
             Monthly
           </button>
           <button
             onClick={() => setYearly(true)}
-            className={cn('rounded-full px-4 py-1.5 text-sm font-medium transition-colors', yearly && 'bg-background shadow-sm')}
+            className={cn(
+              'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+              yearly && 'bg-background shadow-sm',
+            )}
           >
             Yearly <span className="text-primary">-20%</span>
           </button>
@@ -66,7 +76,11 @@ export function PricingSection() {
                     <span className="text-4xl font-bold tracking-tight">${price}</span>
                     <span className="text-sm text-muted-foreground">/mo</span>
                   </div>
-                  <Button variant={isPopular ? 'gradient' : 'outline'} className="mt-6 w-full" asChild>
+                  <Button
+                    variant={isPopular ? 'gradient' : 'outline'}
+                    className="mt-6 w-full"
+                    asChild
+                  >
                     <Link to={ROUTES.login}>Get started</Link>
                   </Button>
                   <ul className="mt-6 space-y-3">

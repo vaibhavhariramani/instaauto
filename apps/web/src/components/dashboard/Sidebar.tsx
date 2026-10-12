@@ -9,12 +9,14 @@ import {
   MessageCircle,
   MessageSquare,
   Settings,
+  ShieldCheck,
   Sparkles,
   Text,
   Zap,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 import { ROUTES } from '@/constants/routes';
 
 const NAV_ITEMS = [
@@ -29,8 +31,12 @@ const NAV_ITEMS = [
   { to: ROUTES.billing, label: 'Billing', icon: CreditCard },
 ];
 
+const ADMIN_NAV_ITEM = { to: ROUTES.admin, label: 'Admin', icon: ShieldCheck };
+
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUiStore();
+  const isAdmin = useAuthStore((s) => s.user?.isAdmin);
+  const navItems = isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
 
   return (
     <motion.aside
@@ -42,11 +48,13 @@ export function Sidebar() {
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white">
           <Sparkles className="h-4 w-4" />
         </span>
-        {!sidebarCollapsed && <span className="text-lg font-semibold tracking-tight">InstaAuto</span>}
+        {!sidebarCollapsed && (
+          <span className="text-lg font-semibold tracking-tight">InstaAuto</span>
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-2">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -70,7 +78,12 @@ export function Sidebar() {
           onClick={toggleSidebar}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
-          <ChevronsLeft className={cn('h-[18px] w-[18px] transition-transform', sidebarCollapsed && 'rotate-180')} />
+          <ChevronsLeft
+            className={cn(
+              'h-[18px] w-[18px] transition-transform',
+              sidebarCollapsed && 'rotate-180',
+            )}
+          />
           {!sidebarCollapsed && <span>Collapse</span>}
         </button>
       </div>

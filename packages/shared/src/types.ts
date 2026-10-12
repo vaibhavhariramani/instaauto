@@ -40,6 +40,7 @@ export interface UserDto {
   emailOnDmFailed: boolean;
   emailOnDisconnect: boolean;
   emailWeeklyDigest: boolean;
+  isAdmin: boolean;
   createdAt: string;
 }
 
@@ -172,4 +173,107 @@ export interface AnalyticsDto {
 export interface AuthTokensDto {
   accessToken: string;
   user: UserDto;
+}
+
+// ─── Admin ──────────────────────────────────────────────────────────────
+// Deliberately excludes anything secret or credential-shaped (no access tokens, no password
+// hashes, no Stripe secret-side fields) - see apps/functions/src/utils/adminMappers.ts.
+
+export interface AdminUserListItemDto {
+  id: string;
+  email: string;
+  name: string;
+  createdAt: string;
+  isAdmin: boolean;
+  subscriptionPlan: SubscriptionPlan;
+  subscriptionStatus: SubscriptionStatus;
+  connectedAccountsCount: number;
+  activeAutomationsCount: number;
+  dmsSentThisPeriod: number;
+}
+
+export interface AdminUserListResponseDto {
+  items: AdminUserListItemDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminConnectedAccountDto {
+  id: string;
+  username: string;
+  status: InstagramAccountStatus;
+  connectedAt: string;
+  followersCount: number;
+}
+
+export interface AdminAutomationSummaryDto {
+  id: string;
+  name: string;
+  isActive: boolean;
+  totalTriggers: number;
+  totalDMsSent: number;
+}
+
+export interface AdminUsageDayDto {
+  date: string;
+  commentsDetected: number;
+  dmsSent: number;
+  dmsFailed: number;
+}
+
+export interface AdminInvoiceDto {
+  id: string;
+  amountPaid: number;
+  currency: string;
+  status: string | null;
+  createdAt: string;
+  hostedInvoiceUrl: string | null;
+}
+
+export interface AdminAuditEventDto {
+  action: string;
+  createdAt: string;
+}
+
+export interface AdminActionLogDto {
+  action: string;
+  reason: string;
+  actorEmail: string;
+  createdAt: string;
+}
+
+export interface AdminUserDetailDto {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl: string | null;
+  createdAt: string;
+  isAdmin: boolean;
+  subscriptionPlan: SubscriptionPlan;
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionCurrentPeriodStart: string | null;
+  subscriptionCurrentPeriodEnd: string | null;
+  hasStripeCustomer: boolean;
+  connectedAccounts: AdminConnectedAccountDto[];
+  automations: AdminAutomationSummaryDto[];
+  dmsSentThisPeriod: number;
+  dmLimitPerMonth: number;
+  usageHistory: AdminUsageDayDto[];
+  recentInvoices: AdminInvoiceDto[];
+  recentAuditEvents: AdminAuditEventDto[];
+  recentAdminActions: AdminActionLogDto[];
+}
+
+export interface AdminDashboardDto {
+  totalUsers: number;
+  newUsersLast7Days: number;
+  newUsersLast30Days: number;
+  planCounts: Record<SubscriptionPlan, number>;
+  activePaidSubscriptions: number;
+  pastDueSubscriptions: number;
+  totalActiveAutomations: number;
+  dmsSentLast30Days: number;
+  /** Sum of priceMonthly across ACTIVE/TRIALING paid plans - an estimate, not verified revenue. */
+  estimatedMrr: number;
 }

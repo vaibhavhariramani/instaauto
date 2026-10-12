@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # Covers the root npm workspace (apps/functions, apps/web, apps/mobile, packages/shared all
+  # share the one root package-lock.json).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "ci"

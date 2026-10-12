@@ -4,43 +4,60 @@ export const PLAN_TIERS: Record<
   SubscriptionPlan,
   {
     label: string;
+    // ISO 4217, explicit per requirement 9 - every price below is in this currency. Changing it
+    // is a Stripe-account/Price-object decision (settlement eligibility, international payments),
+    // never a silent code assumption - see docs/security-billing-audit.md.
+    currency: 'USD';
     priceMonthly: number;
+    // 20% off (priceMonthly * 12), matching the "-20%" yearly toggle copy already on the pricing
+    // page - a placeholder discount convention, not a verified business decision. Confirm/adjust
+    // before enabling annual checkout.
     priceYearly: number;
+    // -1 means unlimited (subject to system/abuse safeguards enforced elsewhere, not a quota).
     automationLimit: number;
     dmLimitPerMonth: number;
+    instagramAccountLimit: number;
     features: string[];
     stripePriceIdMonthlyEnv: string;
     stripePriceIdYearlyEnv: string;
   }
 > = {
+  // Internal id stays STARTER (requirement 3: a stable id independent of display name/price) even
+  // though this tier is now marketed as "Free" - renaming the enum itself would mean a migration
+  // touching every existing User row for zero functional benefit.
   STARTER: {
-    label: 'Starter',
-    priceMonthly: 19,
-    priceYearly: 182,
-    automationLimit: 3,
+    label: 'Free',
+    currency: 'USD',
+    priceMonthly: 0,
+    priceYearly: 0,
+    automationLimit: 2,
     dmLimitPerMonth: 500,
+    instagramAccountLimit: 1,
     features: [
-      '3 active automations',
+      '2 active automations',
       '500 DMs / month',
       '1 Instagram account',
       'Basic analytics',
-      'Email support',
+      'Standard support',
+      'InstaAuto branding on automated replies',
     ],
     stripePriceIdMonthlyEnv: 'STRIPE_PRICE_STARTER_MONTHLY',
     stripePriceIdYearlyEnv: 'STRIPE_PRICE_STARTER_YEARLY',
   },
   PRO: {
     label: 'Pro',
-    priceMonthly: 49,
-    priceYearly: 470,
+    currency: 'USD',
+    priceMonthly: 15,
+    priceYearly: 144,
     automationLimit: 15,
     dmLimitPerMonth: 5000,
+    instagramAccountLimit: 3,
     features: [
       '15 active automations',
       '5,000 DMs / month',
       '3 Instagram accounts',
       'Advanced analytics',
-      'Templates library',
+      'No InstaAuto branding',
       'Priority support',
     ],
     stripePriceIdMonthlyEnv: 'STRIPE_PRICE_PRO_MONTHLY',
@@ -48,17 +65,19 @@ export const PLAN_TIERS: Record<
   },
   BUSINESS: {
     label: 'Business',
-    priceMonthly: 129,
-    priceYearly: 1238,
+    currency: 'USD',
+    priceMonthly: 39,
+    priceYearly: 374,
     automationLimit: -1,
     dmLimitPerMonth: -1,
+    instagramAccountLimit: -1,
     features: [
       'Unlimited automations',
       'Unlimited DMs',
       'Unlimited Instagram accounts',
-      'Custom analytics exports',
-      'Dedicated success manager',
-      '24/7 priority support',
+      'Custom analytics and exports',
+      'No InstaAuto branding',
+      'Priority support',
     ],
     stripePriceIdMonthlyEnv: 'STRIPE_PRICE_BUSINESS_MONTHLY',
     stripePriceIdYearlyEnv: 'STRIPE_PRICE_BUSINESS_YEARLY',

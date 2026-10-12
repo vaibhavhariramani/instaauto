@@ -102,7 +102,13 @@ model User {
   stripeCustomerId              String?             @unique
   subscriptionPlan              SubscriptionPlan     @default(STARTER)
   subscriptionStatus            SubscriptionStatus   @default(NONE)
+  subscriptionCurrentPeriodStart DateTime?
   subscriptionCurrentPeriodEnd  DateTime?
+
+  // Never set from client input or any mass-assignable update path - only via the one-time admin
+  // bootstrap script (scripts/bootstrapAdmin.ts) or by an existing admin through the audited admin
+  // mutation endpoints. See middleware/requireAdmin.ts.
+  isAdmin Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -115,8 +121,33 @@ model User {
   notifications     Notification[]
   auditLogs         AuditLog[]
   analyticsDaily    AnalyticsDaily[]
+  adminActionsPerformed AdminActionLog[] @relation("AdminActionActor")
+  adminActionsReceived  AdminActionLog[] @relation("AdminActionTarget")
 
   @@index([email])
+}
+
+// Every admin mutation (e.g. a manual plan override) writes one of these - actor, target, a
+// required human-readable reason, and the before/after state. Read-only admin endpoints don't
+// write here; only state-changing ones do. See middleware/requireAdmin.ts and
+// controllers/admin.controller.ts.
+model AdminActionLog {
+  id     String @id @default(cuid())
+  actorId String
+  actor   User  @relation("AdminActionActor", fields: [actorId], references: [id], onDelete: Cascade)
+
+  targetUserId String?
+  targetUser   User?   @relation("AdminActionTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  action String
+  reason String
+  before Json?
+  after  Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([targetUserId, createdAt])
 }
 
 model InstagramAccount {

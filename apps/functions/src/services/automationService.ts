@@ -11,6 +11,7 @@ import { ApiError } from '../middleware/errors';
 import { notificationService } from './notificationService';
 import { instagramService } from './instagramService';
 import { decryptAccountToken } from './instagramConnectService';
+import { assertCanCreateAutomation } from './entitlementService';
 import { logger } from '../lib/logger';
 
 export async function listAutomations(userId: string) {
@@ -82,6 +83,8 @@ export async function createAutomation(userId: string, input: AutomationInput) {
     where: { id: input.instagramAccountId, userId, status: InstagramAccountStatus.CONNECTED },
   });
   if (!account) throw ApiError.badRequest('Select a connected Instagram account');
+  // Only paused/inactive automations are exempt - they don't consume the "active automations" quota.
+  if (input.isActive) await assertCanCreateAutomation(userId);
 
   const automation = await prisma.automation.create({
     data: {
@@ -124,7 +127,10 @@ export async function createAutomation(userId: string, input: AutomationInput) {
 }
 
 export async function updateAutomation(userId: string, id: string, input: UpdateAutomationInput) {
-  await getAutomation(userId, id);
+  const existing = await getAutomation(userId, id);
+  // Reactivating a paused automation consumes quota the same as creating a new one - toggling
+  // isActive true->true or leaving it unset isn't a reactivation, so only check on the transition.
+  if (input.isActive && !existing.isActive) await assertCanCreateAutomation(userId);
   const automation = await prisma.automation.update({
     where: { id },
     data: input as Prisma.AutomationUpdateInput,
