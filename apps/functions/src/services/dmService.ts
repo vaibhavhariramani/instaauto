@@ -1,5 +1,6 @@
 import { MAX_DM_RETRY_ATTEMPTS, RETRY_BACKOFF_BASE_MINUTES } from '@instaauto/shared';
 import {
+  MessageDirection,
   MessageStatus,
   NotificationType,
   type Automation,
@@ -12,7 +13,17 @@ import { decryptAccountToken } from './instagramConnectService';
 import { renderTemplate } from './automationMatcher';
 import { bumpDailyCounters } from './analyticsRollup';
 import { notificationService } from './notificationService';
+import { upsertConversationMessage } from './conversationUpsert';
 import { logger } from '../lib/logger';
+import { randomUUID } from 'node:crypto';
+
+// instagramService falls back to the literal string 'unknown' when Instagram's response is
+// missing a message id - using that as-is for DirectMessage's unique externalMessageId would
+// make every such send collide with every other one, silently dropping all but the first from
+// the inbox. Substitute a guaranteed-unique id instead so each send still gets its own row.
+function resolveExternalMessageId(id: string): string {
+  return id === 'unknown' ? `internal-${randomUUID()}` : id;
+}
 
 function backoffMinutes(retryCount: number): number {
   return RETRY_BACKOFF_BASE_MINUTES * 2 ** retryCount;
@@ -101,7 +112,7 @@ async function attemptSend(
   const message = await prisma.message.findUniqueOrThrow({ where: { id: messageId } });
   try {
     const token = decryptAccountToken(account);
-    await instagramService.sendPrivateReply(instagramCommentId, content, token);
+    const sent = await instagramService.sendPrivateReply(instagramCommentId, content, token);
 
     await prisma.$transaction([
       prisma.message.update({
@@ -114,6 +125,22 @@ async function attemptSend(
       }),
     ]);
     await bumpDailyCounters(message.userId, { dmsSent: 1 });
+
+    // Mirror into the inbox immediately - don't depend on a separate messaging-webhook echo
+    // (see conversationUpsert.ts) ever arriving for this send. Best-effort: the DM itself has
+    // already gone out, so a hiccup here must not surface as a failed send to the user.
+    try {
+      await upsertConversationMessage({
+        instagramAccountId: account.id,
+        participantIgUserId: message.recipientIgUserId,
+        participantUsername: message.recipientUsername,
+        direction: MessageDirection.OUTBOUND,
+        content,
+        externalMessageId: resolveExternalMessageId(sent.externalMessageId),
+      });
+    } catch (err) {
+      logger.warn({ err: (err as Error).message, messageId }, 'Inbox mirror write failed');
+    }
   } catch (err) {
     const errorMessage = (err as Error).message || 'Unknown error sending DM';
     const retryCount = message.retryCount + 1;
@@ -180,7 +207,7 @@ export async function resolveFollowGatesForParticipant(
     );
 
     try {
-      await instagramService.sendMessage(participantIgUserId, content, accessToken);
+      const sent = await instagramService.sendMessage(participantIgUserId, content, accessToken);
       await prisma.message.create({
         data: {
           userId: automation.userId,
@@ -194,6 +221,19 @@ export async function resolveFollowGatesForParticipant(
           deliveredAt: new Date(),
         },
       });
+
+      try {
+        await upsertConversationMessage({
+          instagramAccountId,
+          participantIgUserId,
+          participantUsername,
+          direction: MessageDirection.OUTBOUND,
+          content,
+          externalMessageId: resolveExternalMessageId(sent.externalMessageId),
+        });
+      } catch (err) {
+        logger.warn({ err: (err as Error).message, gateId: gate.id }, 'Inbox mirror write failed');
+      }
 
       if (sendCta) {
         await prisma.$transaction([

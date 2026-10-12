@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { instagramService } from './instagramService';
 import { decryptAccountToken } from './instagramConnectService';
 import { resolveFollowGatesForParticipant } from './dmService';
+import { upsertConversationMessage } from './conversationUpsert';
 import { ApiError } from '../middleware/errors';
 
 interface MessagingEventInput {
@@ -17,12 +18,7 @@ interface MessagingEventInput {
 
 /** Upserts the conversation thread and appends one message, deduping by Instagram's own message id. */
 export async function processMessagingEvent(event: MessagingEventInput): Promise<void> {
-  const existing = await prisma.directMessage.findUnique({
-    where: { externalMessageId: event.externalMessageId },
-  });
-  if (existing) return;
-
-  let conversation = await prisma.conversation.findUnique({
+  const existingConversation = await prisma.conversation.findUnique({
     where: {
       instagramAccountId_participantIgUserId: {
         instagramAccountId: event.instagramAccountId,
@@ -31,43 +27,24 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
     },
   });
 
-  const preview = event.content.slice(0, 200);
+  // Only spend a Graph API call on a username lookup the first time we see this participant -
+  // on every later message we already have it on the existing conversation row.
+  const participantUsername = existingConversation
+    ? existingConversation.participantUsername
+    : (await instagramService.getUserProfileByIgsid(event.otherPartyIgUserId, event.accessToken))
+        .username;
 
-  if (!conversation) {
-    const profile = await instagramService.getUserProfileByIgsid(
-      event.otherPartyIgUserId,
-      event.accessToken,
-    );
-    conversation = await prisma.conversation.create({
-      data: {
-        instagramAccountId: event.instagramAccountId,
-        participantIgUserId: event.otherPartyIgUserId,
-        participantUsername: profile.username,
-        lastMessageAt: event.timestamp,
-        lastMessagePreview: preview,
-        lastMessageDirection: event.direction,
-      },
-    });
-  } else {
-    conversation = await prisma.conversation.update({
-      where: { id: conversation.id },
-      data: {
-        lastMessageAt: event.timestamp,
-        lastMessagePreview: preview,
-        lastMessageDirection: event.direction,
-      },
-    });
-  }
-
-  await prisma.directMessage.create({
-    data: {
-      conversationId: conversation.id,
-      direction: event.direction,
-      content: event.content,
-      externalMessageId: event.externalMessageId,
-      createdAt: event.timestamp,
-    },
+  const inserted = await upsertConversationMessage({
+    instagramAccountId: event.instagramAccountId,
+    participantIgUserId: event.otherPartyIgUserId,
+    participantUsername,
+    direction: event.direction,
+    content: event.content,
+    externalMessageId: event.externalMessageId,
+    timestamp: event.timestamp,
   });
+  // A redelivered webhook (Meta retries on timeout) must not repeat the follow-gate check below.
+  if (!inserted) return;
 
   // An inbound reply is the earliest point Instagram allows a follow-status check (see
   // dmService.sendAutomationReply) - this is where any pending "please follow" gate resolves.
@@ -75,7 +52,7 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
     await resolveFollowGatesForParticipant(
       event.instagramAccountId,
       event.otherPartyIgUserId,
-      conversation.participantUsername,
+      participantUsername,
       event.accessToken,
     );
   }
