@@ -3,9 +3,9 @@ import type {
   FacebookPage,
   InstagramProfile,
   InstagramService,
+  MediaSummary,
   MessagingParticipant,
   RecentComment,
-  ReelSummary,
   SendReplyResult,
   TokenResult,
 } from '../types/instagram';
@@ -60,16 +60,17 @@ class MockInstagramService implements InstagramService {
     logger.info('[mock] Subscribed page to webhooks (no-op)');
   }
 
-  async getReels(_igUserId: string): Promise<ReelSummary[]> {
+  async getMedia(_igUserId: string): Promise<MediaSummary[]> {
     await wait(200);
-    const captions = [
+    const reelCaptions = [
       'The one habit that changed everything for my business 👇 comment "send me" for the guide',
       'My full course is finally here 🚀 comment "course" to get on the waitlist',
       '3 pricing mistakes creators make (comment "pricing" for my rate card)',
       'This ebook sold out in 24 hours — comment "ebook" and I\'ll send it over',
     ];
-    return captions.map((caption, i) => ({
+    const reels: MediaSummary[] = reelCaptions.map((caption, i) => ({
       id: `mock-reel-1800000000000000${i + 1}`,
+      mediaType: 'REEL',
       thumbnailUrl: `https://picsum.photos/seed/reel${i + 1}/400/700`,
       permalink: `https://instagram.com/reel/mock${i + 1}`,
       caption,
@@ -77,6 +78,38 @@ class MockInstagramService implements InstagramService {
       likeCount: 1200 + i * 480,
       timestamp: new Date(Date.now() - i * 86400000).toISOString(),
     }));
+
+    const carouselCaptions = [
+      '5 lessons from my first year in business (swipe) — comment "lessons" for the full writeup',
+      'Before/after client results 👀 comment "results" for pricing',
+    ];
+    const carousels: MediaSummary[] = carouselCaptions.map((caption, i) => ({
+      id: `mock-carousel-1800000000000000${i + 1}`,
+      mediaType: 'CAROUSEL',
+      thumbnailUrl: `https://picsum.photos/seed/carousel${i + 1}/500/500`,
+      permalink: `https://instagram.com/p/mockcarousel${i + 1}`,
+      caption,
+      commentsCount: 30 + i * 22,
+      likeCount: 800 + i * 310,
+      timestamp: new Date(Date.now() - (i + 1) * 172800000).toISOString(),
+    }));
+
+    const postCaptions = [
+      'New merch drop 🔥 comment "merch" for the link',
+      'Behind the scenes from today\'s shoot — comment "bts" for more',
+    ];
+    const posts: MediaSummary[] = postCaptions.map((caption, i) => ({
+      id: `mock-post-1800000000000000${i + 1}`,
+      mediaType: 'POST',
+      thumbnailUrl: `https://picsum.photos/seed/post${i + 1}/500/500`,
+      permalink: `https://instagram.com/p/mockpost${i + 1}`,
+      caption,
+      commentsCount: 15 + i * 9,
+      likeCount: 400 + i * 150,
+      timestamp: new Date(Date.now() - (i + 2) * 172800000).toISOString(),
+    }));
+
+    return [...reels, ...carousels, ...posts];
   }
 
   async getRecentComments(

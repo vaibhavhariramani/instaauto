@@ -57,9 +57,10 @@ async function refreshStaleThumbnails(automations: Automation[]): Promise<Automa
     accounts.map(async (account) => {
       try {
         const token = decryptAccountToken(account);
-        const reels = await instagramService.getReels(account.instagramBusinessId, token);
-        for (const reel of reels) {
-          if (reel.thumbnailUrl) thumbnailByReelId.set(reel.id, reel.thumbnailUrl);
+        // One call covers Reel and post automations alike - getMedia returns every media type.
+        const media = await instagramService.getMedia(account.instagramBusinessId, token);
+        for (const item of media) {
+          if (item.thumbnailUrl) thumbnailByReelId.set(item.id, item.thumbnailUrl);
         }
       } catch (err) {
         logger.warn(
@@ -104,6 +105,7 @@ export async function createAutomation(userId: string, input: AutomationInput) {
       userId,
       instagramAccountId: input.instagramAccountId,
       name: input.name,
+      postType: input.postType,
       reelId: input.reelId,
       reelThumbnailUrl: input.reelThumbnailUrl,
       reelPermalink: input.reelPermalink,

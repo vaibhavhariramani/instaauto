@@ -71,3 +71,13 @@ export const Theme = {
   SYSTEM: 'SYSTEM',
 } as const;
 export type Theme = (typeof Theme)[keyof typeof Theme];
+
+// CAROUSEL and POST both come from Instagram's regular feed (media_product_type 'FEED'),
+// distinguished by media_type (CAROUSEL_ALBUM vs IMAGE/VIDEO) - REEL is media_product_type
+// 'REELS'. See instagramService.real.ts getMedia for the Graph API mapping.
+export const PostType = {
+  REEL: 'REEL',
+  CAROUSEL: 'CAROUSEL',
+  POST: 'POST',
+} as const;
+export type PostType = (typeof PostType)[keyof typeof PostType];

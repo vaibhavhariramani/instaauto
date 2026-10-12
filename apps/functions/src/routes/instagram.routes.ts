@@ -18,6 +18,7 @@ instagramRouter.get('/', asyncHandler(instagramController.listAccounts));
 instagramRouter.post('/connect', asyncHandler(instagramController.connect));
 instagramRouter.post('/:id/disconnect', asyncHandler(instagramController.disconnect));
 instagramRouter.get('/:id/reels', asyncHandler(instagramController.reels));
+instagramRouter.get('/:id/posts', asyncHandler(instagramController.posts));
 instagramRouter.get('/:id/comments', asyncHandler(instagramController.recentComments));
 instagramRouter.post(
   '/:id/comments/:commentId/reply',

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MatchType, TemplateCategory, Theme } from './enums.js';
+import { MatchType, PostType, TemplateCategory, Theme } from './enums.js';
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -78,6 +78,7 @@ const keywordSchema = z
 const automationBaseSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(120),
   instagramAccountId: z.string().min(1, 'Select an Instagram account'),
+  postType: z.nativeEnum(PostType).default(PostType.REEL),
   reelId: z.string().min(1, 'Select a Reel'),
   reelThumbnailUrl: z.string().url().optional().nullable(),
   reelPermalink: z.string().url().optional().nullable(),

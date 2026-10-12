@@ -57,6 +57,7 @@ export function toAutomationDto(automation: Automation): AutomationDto {
     id: automation.id,
     name: automation.name,
     instagramAccountId: automation.instagramAccountId,
+    postType: automation.postType,
     reelId: automation.reelId,
     reelThumbnailUrl: automation.reelThumbnailUrl,
     reelPermalink: automation.reelPermalink,

@@ -7,9 +7,10 @@ import type {
   FacebookPage,
   InstagramProfile,
   InstagramService,
+  MediaSummary,
+  MediaType,
   MessagingParticipant,
   RecentComment,
-  ReelSummary,
   SendReplyResult,
   TokenResult,
 } from '../types/instagram';
@@ -109,14 +110,21 @@ class RealInstagramService implements InstagramService {
     });
   }
 
-  async getReels(_igUserId: string, accessToken: string): Promise<ReelSummary[]> {
+  async getMedia(_igUserId: string, accessToken: string): Promise<MediaSummary[]> {
     // "me/media" rather than "{id}/media" — same self-lookup requirement as getInstagramProfile.
-    // Reels are mixed in with every other media type in this feed, so a single page of results
-    // can easily miss older Reels — follow pagination up to a safety cap.
+    // Every media type (Reels, carousels, single posts, even stories/ads) is mixed into this one
+    // feed, so a single page of results can easily miss older items — follow pagination up to a
+    // safety cap. media_product_type tells us REELS vs FEED; within FEED, media_type distinguishes
+    // a carousel from a single image/video post. STORY and AD aren't automatable here, so they're
+    // dropped rather than mapped to a MediaType.
     type MediaItem = {
       id: string;
+      media_type?: string;
       media_product_type?: string;
+      // thumbnail_url is only populated for VIDEO media (Reels) - IMAGE and CAROUSEL_ALBUM
+      // posts need media_url instead (the carousel's cover image for CAROUSEL_ALBUM).
       thumbnail_url?: string;
+      media_url?: string;
       permalink: string;
       caption?: string;
       comments_count?: number;
@@ -127,7 +135,7 @@ class RealInstagramService implements InstagramService {
     let url = `${IG_GRAPH_BASE_URL}/me/media`;
     let params: Record<string, string | number> | undefined = {
       fields:
-        'id,media_type,media_product_type,thumbnail_url,permalink,caption,comments_count,like_count,timestamp',
+        'id,media_type,media_product_type,thumbnail_url,media_url,permalink,caption,comments_count,like_count,timestamp',
       access_token: accessToken,
       limit: 50,
     };
@@ -139,17 +147,31 @@ class RealInstagramService implements InstagramService {
       params = undefined; // pagination cursor URLs already include all query params
     }
 
-    return allMedia
-      .filter((m) => m.media_product_type === 'REELS')
-      .map((m) => ({
-        id: m.id,
-        thumbnailUrl: m.thumbnail_url ?? '',
-        permalink: m.permalink,
-        caption: m.caption ?? '',
-        commentsCount: m.comments_count ?? 0,
-        likeCount: m.like_count ?? 0,
-        timestamp: m.timestamp,
-      }));
+    function toMediaType(m: MediaItem): MediaType | null {
+      if (m.media_product_type === 'REELS') return 'REEL';
+      if (m.media_product_type === 'FEED') {
+        if (m.media_type === 'CAROUSEL_ALBUM') return 'CAROUSEL';
+        if (m.media_type === 'IMAGE' || m.media_type === 'VIDEO') return 'POST';
+      }
+      return null;
+    }
+
+    return allMedia.flatMap((m) => {
+      const mediaType = toMediaType(m);
+      if (!mediaType) return [];
+      return [
+        {
+          id: m.id,
+          mediaType,
+          thumbnailUrl: m.thumbnail_url ?? m.media_url ?? '',
+          permalink: m.permalink,
+          caption: m.caption ?? '',
+          commentsCount: m.comments_count ?? 0,
+          likeCount: m.like_count ?? 0,
+          timestamp: m.timestamp,
+        },
+      ];
+    });
   }
 
   /**

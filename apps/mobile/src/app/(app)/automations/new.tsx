@@ -90,6 +90,7 @@ export default function NewAutomationScreen() {
       await create.mutateAsync({
         name: name.trim(),
         instagramAccountId: activeAccountId,
+        postType: 'REEL',
         reelId: selectedReel.id,
         reelThumbnailUrl: selectedReel.thumbnailUrl,
         reelPermalink: selectedReel.permalink,

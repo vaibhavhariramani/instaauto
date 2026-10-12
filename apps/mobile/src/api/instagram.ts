@@ -2,7 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
-import type { InstagramAccountDto, ReelDto, RecentCommentDto } from '@instaauto/shared';
+import type {
+  InstagramAccountDto,
+  PostMediaDto,
+  ReelDto,
+  RecentCommentDto,
+} from '@instaauto/shared';
 import { apiClient } from './client';
 import { queryKeys } from '@/constants/queryKeys';
 import { useActiveUserId } from '@/store/authStore';
@@ -71,6 +76,19 @@ export function useReels(accountId: string | undefined) {
     queryKey: [...queryKeys.reels(accountId ?? ''), userId],
     queryFn: async () => {
       const { data } = await apiClient.get<ReelDto[]>(`/instagram/${accountId}/reels`);
+      return data;
+    },
+    enabled: Boolean(accountId),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function usePosts(accountId: string | undefined) {
+  const userId = useActiveUserId();
+  return useQuery({
+    queryKey: [...queryKeys.posts(accountId ?? ''), userId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<PostMediaDto[]>(`/instagram/${accountId}/posts`);
       return data;
     },
     enabled: Boolean(accountId),

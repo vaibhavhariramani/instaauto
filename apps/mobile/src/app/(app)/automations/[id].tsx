@@ -138,7 +138,11 @@ export default function AutomationDetailScreen() {
           {automation.reelPermalink ? (
             <Card className="gap-1">
               <Text className="text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-500">
-                Linked reel
+                {automation.postType === 'REEL'
+                  ? 'Linked reel'
+                  : automation.postType === 'CAROUSEL'
+                    ? 'Linked carousel'
+                    : 'Linked post'}
               </Text>
               <Text className="text-sm text-neutral-900 dark:text-neutral-50" numberOfLines={1}>
                 {automation.reelCaption || automation.reelPermalink}

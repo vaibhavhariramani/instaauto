@@ -11,5 +11,6 @@ export async function listReelsForAccount(userId: string, instagramAccountId: st
   if (!account) throw ApiError.notFound('Connected Instagram account not found');
 
   const token = decryptAccountToken(account);
-  return instagramService.getReels(account.instagramBusinessId, token);
+  const media = await instagramService.getMedia(account.instagramBusinessId, token);
+  return media.filter((m) => m.mediaType === 'REEL');
 }
