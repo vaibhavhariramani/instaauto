@@ -6,7 +6,14 @@ import { PLAN_TIERS, type SubscriptionPlan } from '@instaauto/shared';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/cn';
@@ -29,17 +36,24 @@ export default function BillingPage() {
     if (result === 'cancelled') toast.info('Checkout cancelled.');
   }, [searchParams]);
 
-  const handleUpgrade = async (plan: SubscriptionPlan) => {
+  const handlePortal = async () => {
     try {
-      await checkout.mutateAsync({ plan, billingCycle: 'monthly' });
+      await portal.mutateAsync();
     } catch (err) {
       toast.error(extractErrorMessage(err));
     }
   };
 
-  const handlePortal = async () => {
+  // Free (STARTER) has no checkout - it's the no-payment default. "Switching" to it from a paid
+  // plan means cancelling the active subscription, which only the billing portal can do; Stripe's
+  // cancellation webhook then drops entitlements back to Free automatically.
+  const handlePlanAction = async (plan: SubscriptionPlan) => {
+    if (plan === 'STARTER') {
+      await handlePortal();
+      return;
+    }
     try {
-      await portal.mutateAsync();
+      await checkout.mutateAsync({ plan, billingCycle: 'monthly' });
     } catch (err) {
       toast.error(extractErrorMessage(err));
     }
@@ -49,7 +63,9 @@ export default function BillingPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h2 className="text-xl font-semibold tracking-tight">Billing</h2>
-        <p className="text-sm text-muted-foreground">Manage your subscription and view past invoices.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage your subscription and view past invoices.
+        </p>
       </div>
 
       <Card>
@@ -57,7 +73,9 @@ export default function BillingPage() {
           <div>
             <CardTitle>Current plan</CardTitle>
             <CardDescription>
-              {user ? `${PLAN_TIERS[user.subscriptionPlan].label} — ${user.subscriptionStatus.toLowerCase()}` : ''}
+              {user
+                ? `${PLAN_TIERS[user.subscriptionPlan].label} — ${user.subscriptionStatus.toLowerCase()}`
+                : ''}
             </CardDescription>
           </div>
           <Button variant="outline" onClick={handlePortal} loading={portal.isPending}>
@@ -71,7 +89,10 @@ export default function BillingPage() {
           const plan = PLAN_TIERS[planKey];
           const isCurrent = user?.subscriptionPlan === planKey;
           return (
-            <Card key={planKey} className={cn(isCurrent && 'border-primary shadow-md shadow-primary/10')}>
+            <Card
+              key={planKey}
+              className={cn(isCurrent && 'border-primary shadow-md shadow-primary/10')}
+            >
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">{plan.label}</CardTitle>
@@ -94,10 +115,14 @@ export default function BillingPage() {
                   variant={isCurrent ? 'outline' : 'gradient'}
                   className="w-full"
                   disabled={isCurrent}
-                  loading={checkout.isPending}
-                  onClick={() => handleUpgrade(planKey)}
+                  loading={checkout.isPending || (planKey === 'STARTER' && portal.isPending)}
+                  onClick={() => handlePlanAction(planKey)}
                 >
-                  {isCurrent ? 'Current plan' : 'Switch plan'}
+                  {isCurrent
+                    ? 'Current plan'
+                    : planKey === 'STARTER'
+                      ? 'Downgrade to Free'
+                      : 'Switch plan'}
                 </Button>
               </CardContent>
             </Card>
@@ -113,7 +138,11 @@ export default function BillingPage() {
           {invoicesLoading ? (
             <Skeleton className="h-32 w-full" />
           ) : !invoices || invoices.length === 0 ? (
-            <EmptyState icon={Receipt} title="No invoices yet" description="Your billing history will appear here once you subscribe." />
+            <EmptyState
+              icon={Receipt}
+              title="No invoices yet"
+              description="Your billing history will appear here once you subscribe."
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -130,7 +159,10 @@ export default function BillingPage() {
                   <TableRow key={inv.id}>
                     <TableCell>{inv.number ?? inv.id}</TableCell>
                     <TableCell>
-                      {(inv.amountPaid / 100).toLocaleString('en-US', { style: 'currency', currency: inv.currency })}
+                      {(inv.amountPaid / 100).toLocaleString('en-US', {
+                        style: 'currency',
+                        currency: inv.currency,
+                      })}
                     </TableCell>
                     <TableCell className="capitalize">{inv.status}</TableCell>
                     <TableCell>{new Date(inv.createdAt).toLocaleDateString()}</TableCell>

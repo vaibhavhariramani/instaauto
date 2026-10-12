@@ -41,9 +41,9 @@ describe('getEffectivePlan', () => {
 });
 
 describe('getEffectiveTier', () => {
-  it('returns the Starter tier limits for a lapsed Pro subscription', () => {
+  it('returns the Free tier limits for a lapsed Pro subscription', () => {
     const tier = getEffectiveTier({ subscriptionPlan: 'PRO', subscriptionStatus: 'CANCELED' });
-    expect(tier.automationLimit).toBe(3);
+    expect(tier.automationLimit).toBe(2);
     expect(tier.dmLimitPerMonth).toBe(500);
     expect(tier.instagramAccountLimit).toBe(1);
   });

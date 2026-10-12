@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Activity, AlertTriangle, DollarSign, Users, Zap } from 'lucide-react';
+import { PLAN_TIERS } from '@instaauto/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAdminDashboard } from '@/api/admin';
@@ -88,12 +89,12 @@ export default function AdminDashboardPage() {
         />
         <StatCard
           icon={Users}
-          label="Starter plan"
+          label={`${PLAN_TIERS.STARTER.label} plan`}
           value={data.planCounts.STARTER.toLocaleString()}
         />
         <StatCard
           icon={AlertTriangle}
-          label="Pro / Business"
+          label={`${PLAN_TIERS.PRO.label} / ${PLAN_TIERS.BUSINESS.label}`}
           value={(data.planCounts.PRO + data.planCounts.BUSINESS).toLocaleString()}
         />
       </div>

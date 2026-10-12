@@ -83,9 +83,9 @@ function PlanChangeDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="STARTER">Starter</SelectItem>
-                <SelectItem value="PRO">Pro</SelectItem>
-                <SelectItem value="BUSINESS">Business</SelectItem>
+                <SelectItem value="STARTER">{PLAN_TIERS.STARTER.label}</SelectItem>
+                <SelectItem value="PRO">{PLAN_TIERS.PRO.label}</SelectItem>
+                <SelectItem value="BUSINESS">{PLAN_TIERS.BUSINESS.label}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -107,7 +107,7 @@ function PlanChangeDialog({
             Cancel
           </Button>
           <Button onClick={onConfirm} disabled={reason.trim().length < 10 || update.isPending}>
-            {update.isPending ? 'Saving…' : `Set plan to ${plan}`}
+            {update.isPending ? 'Saving…' : `Set plan to ${PLAN_TIERS[plan].label}`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -171,7 +171,7 @@ export default function AdminUserDetailPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex items-center gap-2">
-              <Badge>{user.subscriptionPlan}</Badge>
+              <Badge>{PLAN_TIERS[user.subscriptionPlan].label}</Badge>
               <Badge variant="outline">{user.subscriptionStatus}</Badge>
             </div>
             <p className="text-xs text-muted-foreground">

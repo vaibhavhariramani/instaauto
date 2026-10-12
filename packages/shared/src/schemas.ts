@@ -158,8 +158,11 @@ export const instagramOAuthCallbackSchema = z.object({
 });
 export type InstagramOAuthCallbackInput = z.infer<typeof instagramOAuthCallbackSchema>;
 
+// STARTER (the free plan) deliberately excluded - it's the no-payment default every account
+// already starts on, so there's nothing to check out for. "Downgrading" to it means cancelling
+// whatever paid subscription is active (via the billing portal), not creating a $0 checkout.
 export const createCheckoutSessionSchema = z.object({
-  plan: z.enum(['STARTER', 'PRO', 'BUSINESS']),
+  plan: z.enum(['PRO', 'BUSINESS']),
   billingCycle: z.enum(['monthly', 'yearly']).default('monthly'),
 });
 export type CreateCheckoutSessionInput = z.infer<typeof createCheckoutSessionSchema>;

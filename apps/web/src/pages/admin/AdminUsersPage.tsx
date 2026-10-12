@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Search, Users } from 'lucide-react';
-import type { SubscriptionPlan } from '@instaauto/shared';
+import { PLAN_TIERS, type SubscriptionPlan } from '@instaauto/shared';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -86,9 +86,9 @@ export default function AdminUsersPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="ALL">All plans</SelectItem>
-            <SelectItem value="STARTER">Starter</SelectItem>
-            <SelectItem value="PRO">Pro</SelectItem>
-            <SelectItem value="BUSINESS">Business</SelectItem>
+            <SelectItem value="STARTER">{PLAN_TIERS.STARTER.label}</SelectItem>
+            <SelectItem value="PRO">{PLAN_TIERS.PRO.label}</SelectItem>
+            <SelectItem value="BUSINESS">{PLAN_TIERS.BUSINESS.label}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -138,7 +138,9 @@ export default function AdminUsersPage() {
                     <div className="text-xs text-muted-foreground">{u.email}</div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={PLAN_BADGE[u.subscriptionPlan]}>{u.subscriptionPlan}</Badge>
+                    <Badge variant={PLAN_BADGE[u.subscriptionPlan]}>
+                      {PLAN_TIERS[u.subscriptionPlan].label}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={STATUS_BADGE[u.subscriptionStatus] ?? 'secondary'}>

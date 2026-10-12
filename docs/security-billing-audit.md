@@ -213,3 +213,63 @@ repo's Settings tab:
 - [ ] If yes: decide dual-provider vs. migration approach for existing subscribers.
 - [ ] Either way: Razorpay test-mode API keys + webhook secret, so integration work can proceed
   against test mode only, per your own rule 5/6.
+
+---
+
+## Addendum — new pricing (2026-10-12)
+
+Replaced the old $19/$49/$129 Starter/Pro/Business catalogue with Free ($0)/Pro ($15)/Business
+($39), per your updated requirements. All changes are in `packages/shared/src/constants.ts`
+(`PLAN_TIERS`) — the single canonical source every surface reads from (requirement 1):
+`billing.controller.ts`, `BillingPage.tsx`, `PricingSection.tsx`, and the admin dashboard/user
+pages all picked up the new numbers with no duplicated pricing logic anywhere else.
+
+**What changed:**
+- Internal plan id stays `STARTER`/`PRO`/`BUSINESS` (requirement 3 — a stable id independent of
+  display name/price); only `label` changed (`STARTER` → displayed as "Free"), so no `User` rows
+  needed touching and no enum migration was required.
+- Quotas: Free is now 2 automations (was 3) / 500 DMs / 1 account; Pro and Business quotas are
+  **unchanged** (15/5,000/3 and unlimited respectively) — only their prices dropped. Existing
+  Pro/Business subscribers see no functional change. An existing Free-tier user already running 3
+  automations keeps all 3 running (nothing gets force-disabled) but can't create or reactivate a
+  4th until they're back under the new cap of 2 — the enforcement built in the first phase of this
+  PR only ever gates forward actions, never retroactively revokes.
+- `createCheckoutSessionSchema`'s `plan` field now excludes `STARTER` (requirement: Free needs no
+  checkout). `BillingPage.tsx`'s "Downgrade to Free" action now correctly opens the Stripe billing
+  portal (cancel flow) instead of attempting a $0 checkout, and the type change makes the old
+  misuse a compile error, not just a runtime 400.
+- Added an explicit `currency: 'USD'` field per plan (requirement 9) — this was always USD in
+  practice, just not stated in code before. **Not done**: actually verifying your Stripe account's
+  international settlement eligibility — that's a Stripe dashboard fact, not a code question.
+- Annual pricing recomputed at exactly 20% off monthly×12, matching the pricing page's existing
+  "-20%" yearly-toggle copy (Pro $144/yr, Business $374/yr). This discount percentage is a
+  placeholder convention carried over from the old catalogue, not a verified business decision —
+  confirm before relying on it.
+- Fixed now-inaccurate "Start free for 14 days" landing-page copy (leftover from when the cheapest
+  plan was a $19/mo trial-gated tier) to reflect the real permanent Free plan.
+
+**What did not change (confirmed, not assumed):**
+- Existing Stripe subscriptions are economically unaffected. Stripe bills against the Price object
+  a subscription was created with, not against this code's catalogue — updating `PLAN_TIERS` only
+  affects *new* checkouts. Nothing in this change touches `stripeService.ts`'s webhook handlers or
+  iterates existing subscriptions (requirements 5/6: no silent repricing).
+- "Basic/Advanced/Custom analytics" and the new "InstaAuto branding" line are marketing copy only,
+  exactly like the old catalogue's "Templates library"/"Dedicated success manager" bullets were —
+  none of these were ever enforced in code, confirmed by grep before writing the new copy. Building
+  an actual branding-injection feature (what text, where it appears, a toggle) is a distinct
+  product decision I didn't make unprompted — flagging it explicitly rather than silently treating
+  the bullet point as "done."
+
+**Manual task before any of this is live:** the `STRIPE_PRICE_PRO_MONTHLY`/`_YEARLY` and
+`STRIPE_PRICE_BUSINESS_MONTHLY`/`_YEARLY` env vars need new Stripe Price objects created at the new
+amounts ($15/$144, $39/$374) — the env var *names* are unchanged, only the Price IDs they point to
+need updating in your deployment secrets once you've created the new Prices in Stripe's dashboard.
+`STRIPE_PRICE_STARTER_*` are now unreachable (Free has no checkout) and can be left unset.
+
+**Tooling fix found along the way:** `apps/functions` resolves `@instaauto/shared` from a packed
+tarball, not the live workspace symlink `apps/web` uses — and npm doesn't re-extract that tarball
+on a plain `npm install` when its `package.json` version string hasn't changed, even if the
+tarball's actual contents did. This caused real local staleness (and cost real time) while building
+both this addendum and the original PR. Added `npm run sync:shared` (root `package.json`) as the
+one command that reliably rebuilds `packages/shared`, repacks it, and forces a fresh extraction —
+run it after any change to `packages/shared/src/**`.
