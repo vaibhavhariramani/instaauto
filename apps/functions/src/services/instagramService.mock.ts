@@ -1,6 +1,7 @@
 import { logger } from '../lib/logger';
 import type {
   FacebookPage,
+  IceBreakerInput,
   InstagramProfile,
   InstagramService,
   MessagingParticipant,
@@ -34,7 +35,9 @@ class MockInstagramService implements InstagramService {
 
   async getFacebookPages(): Promise<FacebookPage[]> {
     await wait(150);
-    return [{ id: 'mock-fb-page-100000000000000', name: 'Demo Creator', accessToken: 'mock-page-token' }];
+    return [
+      { id: 'mock-fb-page-100000000000000', name: 'Demo Creator', accessToken: 'mock-page-token' },
+    ];
   }
 
   async getInstagramBusinessAccountId(): Promise<string | null> {
@@ -77,13 +80,37 @@ class MockInstagramService implements InstagramService {
     }));
   }
 
-  async getRecentComments(_igUserId: string, _accessToken: string, limit = 20): Promise<RecentComment[]> {
+  async getRecentComments(
+    _igUserId: string,
+    _accessToken: string,
+    limit = 20,
+  ): Promise<RecentComment[]> {
     await wait(200);
-    const usernames = ['traveler_jane', 'growth.mike', 'sara_builds', 'devon.codes', 'lena_travels'];
-    const texts = ['send me', 'course please!', 'pricing?', 'ebook 🙏', 'love this, send me the guide'];
+    const usernames = [
+      'traveler_jane',
+      'growth.mike',
+      'sara_builds',
+      'devon.codes',
+      'lena_travels',
+    ];
+    const texts = [
+      'send me',
+      'course please!',
+      'pricing?',
+      'ebook 🙏',
+      'love this, send me the guide',
+    ];
     const reels = [
-      { id: 'mock-reel-18000000000000001', permalink: 'https://instagram.com/reel/mock1', thumbnailUrl: 'https://picsum.photos/seed/reel1/400/700' },
-      { id: 'mock-reel-18000000000000002', permalink: 'https://instagram.com/reel/mock2', thumbnailUrl: 'https://picsum.photos/seed/reel2/400/700' },
+      {
+        id: 'mock-reel-18000000000000001',
+        permalink: 'https://instagram.com/reel/mock1',
+        thumbnailUrl: 'https://picsum.photos/seed/reel1/400/700',
+      },
+      {
+        id: 'mock-reel-18000000000000002',
+        permalink: 'https://instagram.com/reel/mock2',
+        thumbnailUrl: 'https://picsum.photos/seed/reel2/400/700',
+      },
     ];
     return Array.from({ length: limit }, (_, i) => {
       const reel = reels[i % reels.length]!;
@@ -121,6 +148,15 @@ class MockInstagramService implements InstagramService {
   async getUserProfileByIgsid(): Promise<MessagingParticipant> {
     await wait(100);
     return { username: 'demo_follower' };
+  }
+
+  async syncIceBreakers(
+    _igUserId: string,
+    _accessToken: string,
+    iceBreakers: IceBreakerInput[],
+  ): Promise<void> {
+    await wait(150);
+    logger.info({ count: iceBreakers.length }, '[mock] Ice breakers synced');
   }
 }
 

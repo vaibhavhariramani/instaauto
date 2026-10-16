@@ -145,8 +145,24 @@ model InstagramAccount {
   automations Automation[]
   messages    Message[]
   conversations Conversation[]
+  iceBreakers IceBreaker[]
 
   @@index([userId])
+}
+
+model IceBreaker {
+  id                 String   @id @default(cuid())
+  instagramAccountId String
+  instagramAccount   InstagramAccount @relation(fields: [instagramAccountId], references: [id], onDelete: Cascade)
+
+  question           String
+  response           String
+  position           Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([instagramAccountId])
 }
 
 model Conversation {

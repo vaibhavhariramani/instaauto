@@ -13,6 +13,7 @@ const TITLES: Record<string, string> = {
   [ROUTES.templates]: 'Templates',
   [ROUTES.analytics]: 'Analytics',
   [ROUTES.instagram]: 'Instagram',
+  [ROUTES.iceBreakers]: 'Ice Breakers',
   [ROUTES.settings]: 'Settings',
   [ROUTES.billing]: 'Billing',
 };

@@ -173,3 +173,13 @@ export interface AuthTokensDto {
   accessToken: string;
   user: UserDto;
 }
+
+export interface IceBreakerDto {
+  id: string;
+  instagramAccountId: string;
+  question: string;
+  response: string;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}

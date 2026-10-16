@@ -7,6 +7,7 @@ import {
   Instagram,
   LayoutDashboard,
   MessageCircle,
+  MessageCircleQuestion,
   MessageSquare,
   Settings,
   Sparkles,
@@ -25,6 +26,7 @@ const NAV_ITEMS = [
   { to: ROUTES.templates, label: 'Templates', icon: Text },
   { to: ROUTES.analytics, label: 'Analytics', icon: BarChart3 },
   { to: ROUTES.instagram, label: 'Instagram', icon: Instagram },
+  { to: ROUTES.iceBreakers, label: 'Ice Breakers', icon: MessageCircleQuestion },
   { to: ROUTES.settings, label: 'Settings', icon: Settings },
   { to: ROUTES.billing, label: 'Billing', icon: CreditCard },
 ];
@@ -42,7 +44,9 @@ export function Sidebar() {
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white">
           <Sparkles className="h-4 w-4" />
         </span>
-        {!sidebarCollapsed && <span className="text-lg font-semibold tracking-tight">InstaAuto</span>}
+        {!sidebarCollapsed && (
+          <span className="text-lg font-semibold tracking-tight">InstaAuto</span>
+        )}
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-2">
@@ -70,7 +74,12 @@ export function Sidebar() {
           onClick={toggleSidebar}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
         >
-          <ChevronsLeft className={cn('h-[18px] w-[18px] transition-transform', sidebarCollapsed && 'rotate-180')} />
+          <ChevronsLeft
+            className={cn(
+              'h-[18px] w-[18px] transition-transform',
+              sidebarCollapsed && 'rotate-180',
+            )}
+          />
           {!sidebarCollapsed && <span>Collapse</span>}
         </button>
       </div>

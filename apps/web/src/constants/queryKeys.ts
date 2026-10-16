@@ -9,6 +9,7 @@ export const queryKeys = {
   automations: ['automations'] as const,
   automation: (id: string) => ['automations', id] as const,
   templates: ['templates'] as const,
+  iceBreakers: (accountId: string) => ['ice-breakers', accountId] as const,
   messages: (params: unknown) => ['messages', params] as const,
   dashboardStats: ['analytics', 'dashboard'] as const,
   analytics: (params: unknown) => ['analytics', params] as const,

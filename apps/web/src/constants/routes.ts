@@ -12,6 +12,7 @@ export const ROUTES = {
   templates: '/templates',
   analytics: '/analytics',
   instagram: '/instagram',
+  iceBreakers: '/ice-breakers',
   settings: '/settings',
   billing: '/billing',
   privacyPolicy: '/privacy',

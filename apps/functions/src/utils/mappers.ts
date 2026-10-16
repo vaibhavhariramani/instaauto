@@ -2,6 +2,7 @@ import type {
   Automation,
   Conversation,
   DirectMessage,
+  IceBreaker,
   InstagramAccount,
   Message,
   Notification,
@@ -12,6 +13,7 @@ import type {
   AutomationDto,
   ConversationDto,
   DirectMessageDto,
+  IceBreakerDto,
   InstagramAccountDto,
   MessageDto,
   NotificationDto,
@@ -126,6 +128,18 @@ export function toConversationDto(c: Conversation): ConversationDto {
     lastMessageAt: c.lastMessageAt.toISOString(),
     lastMessagePreview: c.lastMessagePreview,
     lastMessageDirection: c.lastMessageDirection,
+  };
+}
+
+export function toIceBreakerDto(ib: IceBreaker): IceBreakerDto {
+  return {
+    id: ib.id,
+    instagramAccountId: ib.instagramAccountId,
+    question: ib.question,
+    response: ib.response,
+    position: ib.position,
+    createdAt: ib.createdAt.toISOString(),
+    updatedAt: ib.updatedAt.toISOString(),
   };
 }
 
