@@ -209,15 +209,34 @@ model Automation {
   template             Template? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   publicReplyEnabled   Boolean  @default(false)
-  publicReplyMessage   String?
+  // A pool of variations instead of one fixed string - posting the exact same public comment
+  // every time a keyword matches reads as spam (and Instagram has been known to suppress
+  // visibly-repeated comments). One is picked at random per trigger in dmService.
+  publicReplyMessages  String[] @default([])
 
   // Instagram only allows looking up is_user_follow_business once the recipient has sent at
   // least one inbound DM - a comment or our own private reply doesn't establish that consent
   // window. So the CTA can never be gated at comment-time; followGateMessage goes out first,
-  // and the real reply only follows once they reply back and the check can actually run
-  // (see conversationService.processMessagingEvent).
+  // and the real check only runs once they message back (immediately) or after the 24h sweep
+  // (resolveStaleFollowGates) if sendCtaIfNeverFollows is on.
   requireFollowBeforeCta Boolean @default(false)
   followGateMessage      String?
+  // A single web_url button on the follow-ask message, opening the creator's own Instagram
+  // profile - e.g. "Follow me". Tapping it doesn't send a reply (it's a link, not a quick
+  // reply), so the gate resolves on whatever message they send next, or the 24h sweep.
+  followButtonLabel      String?
+  // "Send the link anyway" (true, the default) vs "Only followers get the link" (false) - see
+  // the scheduled resolveStaleFollowGates sweep, which only force-resolves gates when true.
+  sendCtaIfNeverFollows  Boolean @default(true)
+
+  // When set, the opening DM (the direct CTA, or the opening ask if gated) is sent as an
+  // Instagram quick-reply button with this label instead of plain text - tapping it both
+  // satisfies the inbound-message requirement above and reads more like a real app flow
+  // ("Send me the link") than a wall of text.
+  openingButtonLabel   String?
+  // Up to 3 { label, url } pairs shown as real clickable link buttons under the final CTA
+  // message, instead of (or alongside) a bare URL pasted into the text. See dmService.ts.
+  ctaLinkButtons       Json     @default("[]")
 
   dmOncePerUser        Boolean  @default(true)
   ignoreCreatorComments Boolean @default(true)

@@ -7,12 +7,52 @@ import type {
   FacebookPage,
   InstagramProfile,
   InstagramService,
+  LinkButton,
   MessagingParticipant,
+  PostbackButton,
   RecentComment,
   ReelSummary,
   SendReplyResult,
   TokenResult,
 } from '../types/instagram';
+
+/**
+ * Both button kinds render inside one button-template attachment (max 3 buttons total) so they
+ * look identical - boxed, full-width - rather than mixing in a quick-reply chip, which renders
+ * as a separate colored pill and was confirmed by live testing not to reliably appear at all
+ * when sent alongside a template attachment on the same message. postbackButtons fire a
+ * `postback` webhook event on tap (handled in webhookService) instead of opening a URL; used for
+ * the opening DM's "ask" button and the follow-ask's "I'm following" recheck button, so the tap
+ * itself satisfies Instagram's inbound-message consent gate and re-triggers
+ * resolveFollowGatesForParticipant. linkButtons open a real URL - used for the follow-ask's
+ * "Visit profile" button and the final CTA's link buttons.
+ */
+function buildMessagePayload(
+  text: string,
+  postbackButtons?: PostbackButton[],
+  linkButtons?: LinkButton[],
+) {
+  const buttons = [
+    ...(linkButtons ?? []).map((b) => ({
+      type: 'web_url',
+      url: b.url,
+      title: b.label.slice(0, 20),
+    })),
+    ...(postbackButtons ?? []).map((b) => ({
+      type: 'postback',
+      title: b.title.slice(0, 20),
+      payload: b.payload,
+    })),
+  ].slice(0, 3);
+
+  if (buttons.length === 0) return { text };
+  return {
+    attachment: {
+      type: 'template',
+      payload: { template_type: 'button', text, buttons },
+    },
+  };
+}
 
 /**
  * Real Instagram API (with Instagram Login) integration — direct business-account OAuth
@@ -236,11 +276,16 @@ class RealInstagramService implements InstagramService {
     commentId: string,
     message: string,
     accessToken: string,
+    postbackButtons?: PostbackButton[],
+    linkButtons?: LinkButton[],
   ): Promise<SendReplyResult> {
     try {
       const { data } = await axios.post(
         `${IG_GRAPH_BASE_URL}/me/messages`,
-        { recipient: { comment_id: commentId }, message: { text: message } },
+        {
+          recipient: { comment_id: commentId },
+          message: buildMessagePayload(message, postbackButtons, linkButtons),
+        },
         { params: { access_token: accessToken } },
       );
       return { externalMessageId: data.message_id ?? data.id ?? 'unknown' };
@@ -301,11 +346,20 @@ class RealInstagramService implements InstagramService {
   }
 
   /** Sends a fresh outbound DM to an existing conversation participant (not tied to a comment). */
-  async sendMessage(igsid: string, message: string, accessToken: string): Promise<SendReplyResult> {
+  async sendMessage(
+    igsid: string,
+    message: string,
+    accessToken: string,
+    postbackButtons?: PostbackButton[],
+    linkButtons?: LinkButton[],
+  ): Promise<SendReplyResult> {
     try {
       const { data } = await axios.post(
         `${IG_GRAPH_BASE_URL}/me/messages`,
-        { recipient: { id: igsid }, message: { text: message } },
+        {
+          recipient: { id: igsid },
+          message: buildMessagePayload(message, postbackButtons, linkButtons),
+        },
         { params: { access_token: accessToken } },
       );
       return { externalMessageId: data.message_id ?? data.id ?? 'unknown' };

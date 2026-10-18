@@ -23,6 +23,10 @@ interface MetaMessagingEvent {
   recipient: { id: string };
   timestamp: number;
   message?: { mid: string; text?: string; is_echo?: boolean };
+  // Fired when a postback-type button (not a quick-reply) is tapped - see
+  // instagramService.real.ts's buildMessagePayload for why buttons use this type. Always
+  // user-initiated, never echoed.
+  postback?: { mid?: string; title?: string; payload: string };
 }
 
 interface MetaWebhookEntry {
@@ -37,8 +41,13 @@ interface MetaWebhookPayload {
   entry: MetaWebhookEntry[];
 }
 
-export function verifyWebhookSubscription(mode: string | undefined, token: string | undefined): boolean {
-  return mode === 'subscribe' && Boolean(config.META_VERIFY_TOKEN) && token === config.META_VERIFY_TOKEN;
+export function verifyWebhookSubscription(
+  mode: string | undefined,
+  token: string | undefined,
+): boolean {
+  return (
+    mode === 'subscribe' && Boolean(config.META_VERIFY_TOKEN) && token === config.META_VERIFY_TOKEN
+  );
 }
 
 export function verifySignature(rawBody: Buffer, signatureHeader: string | undefined): boolean {
@@ -46,7 +55,10 @@ export function verifySignature(rawBody: Buffer, signatureHeader: string | undef
   return verifyMetaSignature(rawBody, signatureHeader, config.META_APP_SECRET);
 }
 
-export async function handleIncomingWebhook(rawBody: Buffer, signatureHeader: string | undefined): Promise<void> {
+export async function handleIncomingWebhook(
+  rawBody: Buffer,
+  signatureHeader: string | undefined,
+): Promise<void> {
   const signatureValid = verifySignature(rawBody, signatureHeader);
 
   let payload: MetaWebhookPayload;
@@ -94,6 +106,26 @@ export async function handleIncomingWebhook(rawBody: Buffer, signatureHeader: st
       }
 
       for (const event of entry.messaging ?? []) {
+        if (event.postback) {
+          // A postback button tap (e.g. the opening "ask" button or the follow-ask's "I'm
+          // following" recheck button - see dmService.ts) - always user-initiated, so this is
+          // the same inbound-consent/follow-recheck trigger as a text reply, just routed via a
+          // different webhook field instead of `message`.
+          const token = decryptAccountToken(account);
+          await processMessagingEvent({
+            instagramAccountId: account.id,
+            accountUsername: account.username,
+            otherPartyIgUserId: event.sender.id,
+            direction: MessageDirection.INBOUND,
+            content: event.postback.title ?? event.postback.payload,
+            externalMessageId:
+              event.postback.mid ?? `postback-${event.sender.id}-${event.timestamp}`,
+            timestamp: new Date(event.timestamp),
+            accessToken: token,
+          });
+          continue;
+        }
+
         // Skip read/delivery receipts and anything without actual message content.
         if (!event.message?.text) continue;
 
@@ -103,6 +135,7 @@ export async function handleIncomingWebhook(rawBody: Buffer, signatureHeader: st
         const token = decryptAccountToken(account);
         await processMessagingEvent({
           instagramAccountId: account.id,
+          accountUsername: account.username,
           otherPartyIgUserId,
           direction: isEcho ? MessageDirection.OUTBOUND : MessageDirection.INBOUND,
           content: event.message.text,

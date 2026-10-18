@@ -88,9 +88,13 @@ export interface AutomationDto {
   replyMessage: string;
   templateId: string | null;
   publicReplyEnabled: boolean;
-  publicReplyMessage: string | null;
+  publicReplyMessages: string[];
   requireFollowBeforeCta: boolean;
   followGateMessage: string | null;
+  followButtonLabel: string | null;
+  sendCtaIfNeverFollows: boolean;
+  openingButtonLabel: string | null;
+  ctaLinkButtons: { label: string; url: string }[];
   dmOncePerUser: boolean;
   ignoreCreatorComments: boolean;
   isActive: boolean;

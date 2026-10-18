@@ -66,9 +66,15 @@ export function toAutomationDto(automation: Automation): AutomationDto {
     replyMessage: automation.replyMessage,
     templateId: automation.templateId,
     publicReplyEnabled: automation.publicReplyEnabled,
-    publicReplyMessage: automation.publicReplyMessage,
+    publicReplyMessages: automation.publicReplyMessages,
     requireFollowBeforeCta: automation.requireFollowBeforeCta,
     followGateMessage: automation.followGateMessage,
+    followButtonLabel: automation.followButtonLabel,
+    sendCtaIfNeverFollows: automation.sendCtaIfNeverFollows,
+    openingButtonLabel: automation.openingButtonLabel,
+    ctaLinkButtons: Array.isArray(automation.ctaLinkButtons)
+      ? (automation.ctaLinkButtons as { label: string; url: string }[])
+      : [],
     dmOncePerUser: automation.dmOncePerUser,
     ignoreCreatorComments: automation.ignoreCreatorComments,
     isActive: automation.isActive,

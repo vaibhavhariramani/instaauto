@@ -94,12 +94,10 @@ const automationBaseSchema = z.object({
     .max(1000, 'Message is too long (max 1000 characters)'),
   templateId: z.string().optional().nullable(),
   publicReplyEnabled: z.boolean().default(false),
-  publicReplyMessage: z
-    .string()
-    .trim()
-    .max(2200, 'Reply is too long (max 2200 characters)')
-    .optional()
-    .nullable(),
+  publicReplyMessages: z
+    .array(z.string().trim().min(1).max(2200, 'Reply is too long (max 2200 characters)'))
+    .max(10, 'Too many variations')
+    .default([]),
   requireFollowBeforeCta: z.boolean().default(false),
   followGateMessage: z
     .string()
@@ -107,26 +105,52 @@ const automationBaseSchema = z.object({
     .max(1000, 'Message is too long (max 1000 characters)')
     .optional()
     .nullable(),
+  // A single clickable button opening the creator's own Instagram profile, shown on the
+  // follow-ask message once they've replied and still aren't following yet.
+  followButtonLabel: z
+    .string()
+    .trim()
+    .max(20, 'Button label is too long (max 20 characters)')
+    .optional()
+    .nullable(),
+  // "Send the link anyway" (true) after 24h vs "Only followers get the link" (false, waits
+  // indefinitely) - see the scheduled resolveStaleFollowGates sweep.
+  sendCtaIfNeverFollows: z.boolean().default(true),
+  // Instagram caps a quick-reply button's title at 20 characters.
+  openingButtonLabel: z
+    .string()
+    .trim()
+    .max(20, 'Button label is too long (max 20 characters)')
+    .optional()
+    .nullable(),
+  // Up to 3 real clickable link buttons on the final CTA message, instead of (or alongside) a
+  // bare URL pasted into the text.
+  ctaLinkButtons: z
+    .array(
+      z.object({
+        label: z.string().trim().min(1).max(20, 'Button label is too long (max 20 characters)'),
+        url: z.string().trim().url('Enter a valid URL'),
+      }),
+    )
+    .max(3, 'Up to 3 link buttons')
+    .default([]),
   dmOncePerUser: z.boolean().default(true),
   ignoreCreatorComments: z.boolean().default(true),
   isActive: z.boolean().default(true),
 });
 
-// Saving publicReplyEnabled=true with no publicReplyMessage used to be silently accepted — the
-// backend just skips posting a public reply when the message is empty, with no error surfaced
+// Saving publicReplyEnabled=true with no publicReplyMessages used to be silently accepted — the
+// backend just skips posting a public reply when there's nothing to post, with no error surfaced
 // anywhere, so the toggle looked "on" but never actually did anything until re-saved with text.
 function requirePublicReplyMessageWhenEnabled(data: {
   publicReplyEnabled?: boolean;
-  publicReplyMessage?: string | null;
+  publicReplyMessages?: string[];
 }) {
-  return (
-    !data.publicReplyEnabled ||
-    Boolean(data.publicReplyMessage && data.publicReplyMessage.trim().length > 0)
-  );
+  return !data.publicReplyEnabled || Boolean(data.publicReplyMessages?.length);
 }
 const publicReplyRefinement = {
-  message: 'Add a public reply message, or turn off "Reply to the comment publicly"',
-  path: ['publicReplyMessage'],
+  message: 'Add at least one public reply message, or turn off "Reply to the comment publicly"',
+  path: ['publicReplyMessages'],
 };
 
 // Same shape of bug as the public-reply one above, for the "ask them to follow first" gate.

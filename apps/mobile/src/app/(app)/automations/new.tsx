@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { Card } from '@/components/ui/Card';
 import { HeaderBackButton } from '@/components/ui/HeaderBackButton';
+import { MultiTextEditor } from '@/components/ui/MultiTextEditor';
+import { LinkButtonsEditor, type LinkButtonValue } from '@/components/ui/LinkButtonsEditor';
 import { TemplateVariableChips, appendTemplateToken } from '@/components/ui/TemplateVariableChips';
 import { useInstagramAccounts, useReels } from '@/api/instagram';
 import { useCreateAutomation } from '@/api/automations';
@@ -38,9 +40,13 @@ export default function NewAutomationScreen() {
   const [keywords, setKeywords] = useState('');
   const [replyMessage, setReplyMessage] = useState('');
   const [publicReplyEnabled, setPublicReplyEnabled] = useState(false);
-  const [publicReplyMessage, setPublicReplyMessage] = useState('');
+  const [publicReplyMessages, setPublicReplyMessages] = useState<string[]>(['']);
   const [requireFollowBeforeCta, setRequireFollowBeforeCta] = useState(false);
   const [followGateMessage, setFollowGateMessage] = useState('');
+  const [followButtonLabel, setFollowButtonLabel] = useState('');
+  const [sendCtaIfNeverFollows, setSendCtaIfNeverFollows] = useState(true);
+  const [openingButtonLabel, setOpeningButtonLabel] = useState('');
+  const [ctaLinkButtons, setCtaLinkButtons] = useState<LinkButtonValue[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const create = useCreateAutomation();
@@ -78,14 +84,20 @@ export default function NewAutomationScreen() {
       setError('Fill in a name, at least one keyword, and a reply message.');
       return;
     }
-    if (publicReplyEnabled && !publicReplyMessage.trim()) {
-      setError('Add a public reply message, or turn off "Reply to the comment publicly".');
+    const trimmedPublicReplies = publicReplyMessages.map((m) => m.trim()).filter(Boolean);
+    if (publicReplyEnabled && trimmedPublicReplies.length === 0) {
+      setError(
+        'Add at least one public reply message, or turn off "Reply to the comment publicly".',
+      );
       return;
     }
     if (requireFollowBeforeCta && !followGateMessage.trim()) {
       setError('Add a follow-ask message, or turn off "Require follow before sending the DM".');
       return;
     }
+    const trimmedLinkButtons = ctaLinkButtons
+      .map((b) => ({ label: b.label.trim(), url: b.url.trim() }))
+      .filter((b) => b.label && b.url);
     try {
       await create.mutateAsync({
         name: name.trim(),
@@ -98,9 +110,13 @@ export default function NewAutomationScreen() {
         matchType: 'CONTAINS',
         replyMessage: replyMessage.trim(),
         publicReplyEnabled,
-        publicReplyMessage: publicReplyEnabled ? publicReplyMessage.trim() : null,
+        publicReplyMessages: publicReplyEnabled ? trimmedPublicReplies : [],
         requireFollowBeforeCta,
         followGateMessage: requireFollowBeforeCta ? followGateMessage.trim() : null,
+        followButtonLabel: requireFollowBeforeCta ? followButtonLabel.trim() || null : null,
+        sendCtaIfNeverFollows,
+        openingButtonLabel: openingButtonLabel.trim() || null,
+        ctaLinkButtons: trimmedLinkButtons,
         dmOncePerUser: true,
         ignoreCreatorComments: true,
         isActive: true,
@@ -239,8 +255,23 @@ export default function NewAutomationScreen() {
               autoCapitalize="none"
               placeholder="guide, link, info"
             />
+          </View>
+
+          <View className="gap-3">
+            <View className="px-1">
+              <Text className="text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-500">
+                {requireFollowBeforeCta
+                  ? 'Opening message — sent once they follow'
+                  : 'Opening DM — sent first, every time'}
+              </Text>
+              <Text className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                {requireFollowBeforeCta
+                  ? 'Since "Require follow" is on below, this is sent after they tap to confirm they follow you, not as the very first message.'
+                  : 'This message (and its button) is what they see right after commenting.'}
+              </Text>
+            </View>
             <TextField
-              label="DM reply message"
+              label="Opening message"
               value={replyMessage}
               onChangeText={setReplyMessage}
               multiline
@@ -251,6 +282,26 @@ export default function NewAutomationScreen() {
             <TemplateVariableChips
               onInsert={(token) => setReplyMessage((prev) => appendTemplateToken(prev, token))}
             />
+            <View className="px-1">
+              <Text className="text-xs font-medium text-neutral-700 dark:text-neutral-300">
+                Button on this message (optional)
+              </Text>
+              <Text className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+                Add a real link below for a tappable button that opens a URL. No link yet? Use a
+                plain button label instead — tapping it just sends a reply, it won&apos;t open
+                anything.
+              </Text>
+            </View>
+            <LinkButtonsEditor values={ctaLinkButtons} onChange={setCtaLinkButtons} />
+            {ctaLinkButtons.length === 0 && (
+              <TextField
+                label="Plain button label (optional, no link)"
+                value={openingButtonLabel}
+                onChangeText={setOpeningButtonLabel}
+                maxLength={20}
+                placeholder="e.g. Send me the link"
+              />
+            )}
           </View>
 
           <Card className="gap-3">
@@ -260,7 +311,8 @@ export default function NewAutomationScreen() {
                   Reply to the comment publicly
                 </Text>
                 <Text className="text-xs text-neutral-600 dark:text-neutral-400">
-                  Also post a visible reply under the comment, in addition to the DM
+                  Also post a visible reply under the comment, in addition to the DM. Add a few
+                  variations and one is picked at random each time, avoiding a repetitive look.
                 </Text>
               </View>
               <Switch
@@ -273,22 +325,11 @@ export default function NewAutomationScreen() {
               />
             </View>
             {publicReplyEnabled && (
-              <>
-                <TextField
-                  label="Public reply to comment"
-                  value={publicReplyMessage}
-                  onChangeText={setPublicReplyMessage}
-                  multiline
-                  numberOfLines={2}
-                  style={{ minHeight: 60, textAlignVertical: 'top' }}
-                  placeholder="Sent you a DM! 📩"
-                />
-                <TemplateVariableChips
-                  onInsert={(token) =>
-                    setPublicReplyMessage((prev) => appendTemplateToken(prev, token))
-                  }
-                />
-              </>
+              <MultiTextEditor
+                values={publicReplyMessages}
+                onChange={setPublicReplyMessages}
+                placeholder="Sent you a DM! 📩"
+              />
             )}
           </Card>
 
@@ -299,9 +340,8 @@ export default function NewAutomationScreen() {
                   Require follow before sending the DM
                 </Text>
                 <Text className="text-xs text-neutral-600 dark:text-neutral-400">
-                  Ask them to follow first — Instagram only lets us check that after they reply, so
-                  the real message goes out on their next reply once they are following (or after
-                  one reminder, either way)
+                  Checks if they follow before sending the real message above — if not, loops a
+                  follow reminder until they do (or 24h passes)
                 </Text>
               </View>
               <Switch
@@ -314,15 +354,54 @@ export default function NewAutomationScreen() {
               />
             </View>
             {requireFollowBeforeCta && (
-              <TextField
-                label="Follow-ask message"
-                value={followGateMessage}
-                onChangeText={setFollowGateMessage}
-                multiline
-                numberOfLines={2}
-                style={{ minHeight: 60, textAlignVertical: 'top' }}
-                placeholder="Follow me and reply here to get the link! 🙌"
-              />
+              <>
+                <Text className="text-xs text-neutral-600 dark:text-neutral-400">
+                  With this on, the real message above is sent only once they&apos;re confirmed
+                  following. This message below goes out first instead — keep it generic, since we
+                  don&apos;t know their follow status yet.
+                </Text>
+                <TextField
+                  label="Pre-check message (sent first)"
+                  value={followGateMessage}
+                  onChangeText={setFollowGateMessage}
+                  multiline
+                  numberOfLines={2}
+                  style={{ minHeight: 60, textAlignVertical: 'top' }}
+                  placeholder="Thanks for stopping by! Tap below and I'll send you access shortly ✨"
+                />
+                <TextField
+                  label="Visit-profile button label (optional)"
+                  value={followButtonLabel}
+                  onChangeText={setFollowButtonLabel}
+                  maxLength={20}
+                  placeholder="e.g. Visit Profile"
+                />
+                <Text className="-mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+                  Opens your profile. If they are not following yet, we also add a fixed
+                  &ldquo;I&apos;m following ✅&rdquo; button that rechecks their follow status when
+                  tapped.
+                </Text>
+                <View className="flex-row items-center justify-between gap-3 border-t border-neutral-100 pt-3 dark:border-neutral-800">
+                  <View className="flex-1">
+                    <Text className="text-sm font-medium text-neutral-900 dark:text-neutral-50">
+                      If they never follow
+                    </Text>
+                    <Text className="text-xs text-neutral-600 dark:text-neutral-400">
+                      {sendCtaIfNeverFollows
+                        ? 'Send the link anyway after 24 hours'
+                        : "Only followers get the link — they'll keep getting reminded"}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={sendCtaIfNeverFollows}
+                    onValueChange={(v) => {
+                      Haptics.selectionAsync();
+                      setSendCtaIfNeverFollows(v);
+                    }}
+                    trackColor={{ false: '#d4d4d4', true: '#5e6ad2' }}
+                  />
+                </View>
+              </>
             )}
           </Card>
 

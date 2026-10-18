@@ -3,7 +3,9 @@ import type {
   FacebookPage,
   InstagramProfile,
   InstagramService,
+  LinkButton,
   MessagingParticipant,
+  PostbackButton,
   RecentComment,
   ReelSummary,
   SendReplyResult,
@@ -125,7 +127,13 @@ class MockInstagramService implements InstagramService {
     });
   }
 
-  async sendPrivateReply(commentId: string, message: string): Promise<SendReplyResult> {
+  async sendPrivateReply(
+    commentId: string,
+    message: string,
+    _accessToken?: string,
+    postbackButtons?: PostbackButton[],
+    linkButtons?: LinkButton[],
+  ): Promise<SendReplyResult> {
     await wait(300 + Math.random() * 400);
     // Simulate an occasional realistic failure (e.g. recipient messaging restrictions).
     if (Math.random() < 0.05) {
@@ -134,7 +142,7 @@ class MockInstagramService implements InstagramService {
       );
       throw err;
     }
-    logger.info({ commentId, message }, '[mock] Private reply sent');
+    logger.info({ commentId, message, postbackButtons, linkButtons }, '[mock] Private reply sent');
     return { externalMessageId: `mock-msg-${Date.now()}-${Math.round(Math.random() * 1e6)}` };
   }
 
@@ -149,9 +157,15 @@ class MockInstagramService implements InstagramService {
     return { username: 'demo_follower' };
   }
 
-  async sendMessage(igsid: string, message: string): Promise<SendReplyResult> {
+  async sendMessage(
+    igsid: string,
+    message: string,
+    _accessToken?: string,
+    postbackButtons?: PostbackButton[],
+    linkButtons?: LinkButton[],
+  ): Promise<SendReplyResult> {
     await wait(250 + Math.random() * 300);
-    logger.info({ igsid, message }, '[mock] Direct message sent');
+    logger.info({ igsid, message, postbackButtons, linkButtons }, '[mock] Direct message sent');
     return { externalMessageId: `mock-dm-${Date.now()}-${Math.round(Math.random() * 1e6)}` };
   }
 

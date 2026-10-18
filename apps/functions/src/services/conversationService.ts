@@ -7,6 +7,7 @@ import { ApiError } from '../middleware/errors';
 
 interface MessagingEventInput {
   instagramAccountId: string; // internal InstagramAccount.id
+  accountUsername: string;
   otherPartyIgUserId: string;
   direction: MessageDirection;
   content: string;
@@ -74,6 +75,7 @@ export async function processMessagingEvent(event: MessagingEventInput): Promise
   if (event.direction === MessageDirection.INBOUND) {
     await resolveFollowGatesForParticipant(
       event.instagramAccountId,
+      event.accountUsername,
       event.otherPartyIgUserId,
       conversation.participantUsername,
       event.accessToken,

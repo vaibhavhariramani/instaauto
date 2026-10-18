@@ -53,6 +53,12 @@ function RootNavigator() {
   );
 }
 
+// Bump this whenever a DTO shape changes (fields renamed/added/removed) - the persisted
+// cache otherwise rehydrates old-shaped objects from disk on the next launch, straight into
+// screens that assume the new shape (e.g. automation.publicReplyMessages.length crashing
+// because a pre-update cache entry still only has the old publicReplyMessage: string | null).
+const CACHE_SCHEMA_VERSION = 'v2';
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   // Rehydrating another account's persisted cache under a new active user would
@@ -60,7 +66,10 @@ export default function RootLayout() {
   // account changes so a switch always starts from a clean slate.
   const activeUserId = useAccountsStore((s) => s.activeUserId);
   const persistOptions = useMemo(
-    () => ({ persister: asyncStoragePersister, buster: activeUserId ?? 'anonymous' }),
+    () => ({
+      persister: asyncStoragePersister,
+      buster: `${CACHE_SCHEMA_VERSION}:${activeUserId ?? 'anonymous'}`,
+    }),
     [activeUserId],
   );
 
