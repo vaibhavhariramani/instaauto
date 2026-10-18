@@ -17,17 +17,23 @@ const OAUTH_SCOPES = [
 ].join(',');
 
 export type OAuthReturnTo = 'onboarding' | 'settings';
+// Which client initiated the connect flow - determines whether the callback redirects to the
+// web app or straight into the native app via its custom URL scheme.
+export type ConnectPlatform = 'web' | 'mobile';
 
 export function getAuthorizationUrl(
   userId: string,
   returnTo: OAuthReturnTo = 'onboarding',
+  platform: ConnectPlatform = 'web',
 ): string {
   if (!metaConfigured) {
     throw ApiError.serviceUnavailable(
       'Meta App is not configured on this server. Enable INSTAGRAM_MOCK_MODE for demo purposes, or set META_APP_ID/META_APP_SECRET.',
     );
   }
-  const state = jwt.sign({ userId, returnTo }, config.JWT_ACCESS_SECRET, { expiresIn: '10m' });
+  const state = jwt.sign({ userId, returnTo, platform }, config.JWT_ACCESS_SECRET, {
+    expiresIn: '10m',
+  });
   const params = new URLSearchParams({
     client_id: config.META_APP_ID!,
     redirect_uri: config.META_REDIRECT_URI!,
@@ -38,13 +44,22 @@ export function getAuthorizationUrl(
   return `${IG_OAUTH_AUTHORIZE_URL}?${params.toString()}`;
 }
 
-export function verifyOAuthState(state: string): { userId: string; returnTo: OAuthReturnTo } {
+export function verifyOAuthState(state: string): {
+  userId: string;
+  returnTo: OAuthReturnTo;
+  platform: ConnectPlatform;
+} {
   try {
     const payload = jwt.verify(state, config.JWT_ACCESS_SECRET) as {
       userId: string;
       returnTo?: OAuthReturnTo;
+      platform?: ConnectPlatform;
     };
-    return { userId: payload.userId, returnTo: payload.returnTo ?? 'onboarding' };
+    return {
+      userId: payload.userId,
+      returnTo: payload.returnTo ?? 'onboarding',
+      platform: payload.platform ?? 'web',
+    };
   } catch {
     throw ApiError.badRequest('Invalid or expired OAuth state parameter');
   }

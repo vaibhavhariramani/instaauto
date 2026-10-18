@@ -1,5 +1,5 @@
 import '../styles/global.css';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -32,11 +32,26 @@ function RootNavigator() {
 
   const isReady = !isBootstrapping && hasOnboarded !== null;
 
+  // Belt-and-suspenders: isReady depends on two independent SecureStore/AsyncStorage
+  // rehydrations (auth bootstrap, onboarding status). Each already has its own error
+  // handling, but this app has no error UI for "not ready" - it just renders null - so a
+  // hang in either one (a storage read that neither resolves nor rejects, a future
+  // regression, etc.) would otherwise leave the user on an indefinite blank screen with no
+  // way out. Force progress after a few seconds no matter what.
+  const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
-    if (isReady) SplashScreen.hideAsync();
+    if (isReady) return;
+    const timer = setTimeout(() => setTimedOut(true), 5000);
+    return () => clearTimeout(timer);
   }, [isReady]);
 
-  if (!isReady) return null;
+  const shouldRender = isReady || timedOut;
+
+  useEffect(() => {
+    if (shouldRender) SplashScreen.hideAsync();
+  }, [shouldRender]);
+
+  if (!shouldRender) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

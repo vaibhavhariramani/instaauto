@@ -1,9 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import type { InstagramAccountDto, ReelDto, RecentCommentDto } from '@instaauto/shared';
 import { apiClient } from './client';
 import { queryKeys } from '@/constants/queryKeys';
 import { useActiveUserId } from '@/store/authStore';
+
+// Must match the scheme the backend redirects to for platform=mobile
+// (apps/functions/src/controllers/instagram.controller.ts `redirectTarget`).
+const OAUTH_REDIRECT_URL = 'instaauto://instagram-connect';
 
 export function useInstagramAccounts() {
   const userId = useActiveUserId();
@@ -26,16 +32,21 @@ export function useConnectInstagram() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { data } = await apiClient.post<ConnectResponse>('/instagram/connect');
+      const { data } = await apiClient.post<ConnectResponse>('/instagram/connect?platform=mobile');
       return data;
     },
     onSuccess: async (data) => {
       if (data.mode === 'redirect' && data.authUrl) {
-        // The OAuth callback redirects to the web app, not back into this
-        // native app (the backend has no mobile deep-link redirect_uri
-        // registered with Meta yet) - opening it in-app at least keeps the
-        // user in context; they pull-to-refresh the accounts list after.
-        await WebBrowser.openBrowserAsync(data.authUrl);
+        // openAuthSessionAsync (not openBrowserAsync) watches for the redirect back to our own
+        // scheme and resolves with that URL directly - the backend redirects here with
+        // platform=mobile instead of bouncing to the web app.
+        const result = await WebBrowser.openAuthSessionAsync(data.authUrl, OAUTH_REDIRECT_URL);
+        if (result.type === 'success') {
+          const { queryParams } = Linking.parse(result.url);
+          if (queryParams?.connected === 'false') {
+            Alert.alert('Instagram connection failed', 'Please try connecting again.');
+          }
+        }
         queryClient.invalidateQueries({ queryKey: queryKeys.instagramAccounts });
       } else {
         queryClient.invalidateQueries({ queryKey: queryKeys.instagramAccounts });

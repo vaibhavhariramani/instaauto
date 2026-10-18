@@ -19,6 +19,7 @@ import { ListRow } from '@/components/ui/ListRow';
 import { StatusPill } from '@/components/ui/StatusPill';
 import { useAuthStore } from '@/store/authStore';
 import { useAccountsStore } from '@/store/accountsStore';
+import { useThemeStore } from '@/store/themeStore';
 import { useLogout } from '@/api/auth';
 import { useDeleteAccount, useMe, useUpdateNotificationPrefs } from '@/api/me';
 import { useConnectInstagram, useDisconnectInstagram, useInstagramAccounts } from '@/api/instagram';
@@ -45,6 +46,8 @@ export default function SettingsScreen() {
 
   const [emailOnDmFailed, setEmailOnDmFailed] = useState(user?.emailOnDmFailed ?? true);
   const [emailWeeklyDigest, setEmailWeeklyDigest] = useState(user?.emailWeeklyDigest ?? true);
+  const isDarkMode = useThemeStore((s) => s.isDarkMode);
+  const setDarkMode = useThemeStore((s) => s.setDarkMode);
 
   if (!user) return null;
 
@@ -166,6 +169,27 @@ export default function SettingsScreen() {
             loading={connect.isPending}
           />
         )}
+      </View>
+
+      <View className="gap-2">
+        <Text className="px-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-500">
+          Preferences
+        </Text>
+        <Card>
+          <ListRow
+            testID="settings-dark-mode-row"
+            icon="moon-outline"
+            label="Dark mode"
+            right={
+              <Switch
+                testID="settings-dark-mode-switch"
+                value={isDarkMode}
+                onValueChange={setDarkMode}
+                trackColor={{ false: '#d4d4d4', true: '#5e6ad2' }}
+              />
+            }
+          />
+        </Card>
       </View>
 
       <View className="gap-2">
