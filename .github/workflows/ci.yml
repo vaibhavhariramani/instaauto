@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege default for every job in this workflow - only the GITHUB_TOKEN scope each job
+# actually needs. Neither job here needs to write to the repo, comment on PRs, or touch packages,
+# so read-only contents access is sufficient for both.
+permissions:
+  contents: read
+
 jobs:
   lint-typecheck-test-build:
     runs-on: ubuntu-latest
@@ -34,9 +40,9 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: 'npm'
@@ -75,10 +81,15 @@ jobs:
     needs: lint-typecheck-test-build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Ties this job to a GitHub Environment named "production" - on its own this is a no-op, but
+    # once the environment exists (Settings -> Environments -> New environment -> "production")
+    # with required reviewers configured, every run of this job pauses for manual approval before
+    # the production secrets below become available to it. See the CI/CD hardening checklist.
+    environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: 'npm'

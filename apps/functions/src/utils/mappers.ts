@@ -34,6 +34,7 @@ export function toUserDto(user: User): UserDto {
     emailOnDmFailed: user.emailOnDmFailed,
     emailOnDisconnect: user.emailOnDisconnect,
     emailWeeklyDigest: user.emailWeeklyDigest,
+    isAdmin: user.isAdmin,
     createdAt: user.createdAt.toISOString(),
   };
 }

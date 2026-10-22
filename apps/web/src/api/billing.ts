@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { SubscriptionPlan } from '@instaauto/shared';
+import type { CreateCheckoutSessionInput } from '@instaauto/shared';
 import { apiClient } from './client';
 import { queryKeys } from '@/constants/queryKeys';
 
@@ -25,7 +25,10 @@ export function useInvoices() {
 
 export function useCreateCheckoutSession() {
   return useMutation({
-    mutationFn: async (input: { plan: SubscriptionPlan; billingCycle: 'monthly' | 'yearly' }) => {
+    // Typed from the same Zod schema the backend validates against (plan excludes STARTER - the
+    // free plan has no checkout, see createCheckoutSessionSchema) so a misuse like "checkout into
+    // Free" is a compile error here, not just a 400 from the server.
+    mutationFn: async (input: CreateCheckoutSessionInput) => {
       const { data } = await apiClient.post<{ url: string }>('/billing/checkout', input);
       return data;
     },

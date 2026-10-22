@@ -10,6 +10,7 @@
   "scripts": {
     "predev": "npm run build -w packages/shared",
     "dev": "concurrently -n web,api -c blue,magenta \"npm run dev -w apps/web\" \"npm run dev -w apps/functions\"",
+    "sync:shared": "npm run build -w packages/shared && npm pack --pack-destination apps/functions -w packages/shared && node -e \"require('fs').rmSync('apps/functions/node_modules/@instaauto/shared',{recursive:true,force:true})\" && npm install",
     "build": "npm run build -w packages/shared && npm run build -w apps/web && npm run build -w apps/functions",
     "lint": "npm run lint -w apps/web && npm run lint -w apps/functions",
     "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/functions",

@@ -18,6 +18,7 @@ import { conversationsRouter } from './routes/conversations.routes';
 import { analyticsRouter } from './routes/analytics.routes';
 import { notificationsRouter } from './routes/notifications.routes';
 import { billingRouter } from './routes/billing.routes';
+import { adminRouter } from './routes/admin.routes';
 import { devRouter } from './routes/dev.routes';
 
 export function createApp() {
@@ -53,6 +54,7 @@ export function createApp() {
   app.use('/api/analytics', analyticsRouter);
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/billing', billingRouter);
+  app.use('/api/admin', adminRouter);
   app.use('/api/dev', devRouter);
 
   app.use(notFoundHandler);
