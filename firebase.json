@@ -17,7 +17,7 @@
     {
       "source": "apps/functions",
       "codebase": "default",
-      "runtime": "nodejs20",
+      "runtime": "nodejs24",
       "predeploy": [
         "npm run build -w packages/shared",
         "npm pack --pack-destination apps/functions -w packages/shared",
