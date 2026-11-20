@@ -30,6 +30,7 @@ const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
 const InstagramConnectionPage = lazy(() => import('@/pages/InstagramConnectionPage'));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage'));
 const BillingPage = lazy(() => import('@/pages/BillingPage'));
+const IntegrationsPage = lazy(() => import('@/pages/IntegrationsPage'));
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'));
 const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage'));
 const AdminUserDetailPage = lazy(() => import('@/pages/admin/AdminUserDetailPage'));
@@ -75,6 +76,7 @@ function AppRoutes() {
           <Route path={ROUTES.instagram} element={<InstagramConnectionPage />} />
           <Route path={ROUTES.settings} element={<SettingsPage />} />
           <Route path={ROUTES.billing} element={<BillingPage />} />
+          <Route path={ROUTES.integrations} element={<IntegrationsPage />} />
 
           <Route element={<AdminRoute />}>
             <Route path={ROUTES.admin} element={<AdminDashboardPage />} />

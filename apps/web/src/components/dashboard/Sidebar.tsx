@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   MessageCircle,
   MessageSquare,
+  Plug,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { to: ROUTES.instagram, label: 'Instagram', icon: Instagram },
   { to: ROUTES.settings, label: 'Settings', icon: Settings },
   { to: ROUTES.billing, label: 'Billing', icon: CreditCard },
+  { to: ROUTES.integrations, label: 'AI integrations', icon: Plug },
 ];
 
 const ADMIN_NAV_ITEM = { to: ROUTES.admin, label: 'Admin', icon: ShieldCheck };

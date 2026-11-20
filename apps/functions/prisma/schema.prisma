@@ -13,6 +13,11 @@ datasource db {
 
 // ─── Enums ───────────────────────────────────────────────────────────────
 
+enum ApiKeyScope {
+  READ_ONLY
+  READ_WRITE
+}
+
 enum Theme {
   LIGHT
   DARK
@@ -125,6 +130,7 @@ model User {
   sessions          Session[]
   notifications     Notification[]
   auditLogs         AuditLog[]
+  apiKeys           ApiKey[]
   analyticsDaily    AnalyticsDaily[]
   adminActionsPerformed AdminActionLog[] @relation("AdminActionActor")
   adminActionsReceived  AdminActionLog[] @relation("AdminActionTarget")
@@ -453,4 +459,25 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+// Secrets a user creates to let an AI tool (via the MCP endpoint) act on their own account.
+// Only a SHA-256 hash is stored - the secret itself is shown once at creation and can't be
+// recovered. `prefix` is just enough of the key to recognise it in a list.
+model ApiKey {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name       String
+  prefix     String
+  keyHash    String      @unique
+  scope      ApiKeyScope @default(READ_ONLY)
+
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([userId])
 }

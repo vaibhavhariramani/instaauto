@@ -71,3 +71,9 @@ export const Theme = {
   SYSTEM: 'SYSTEM',
 } as const;
 export type Theme = (typeof Theme)[keyof typeof Theme];
+
+export const ApiKeyScope = {
+  READ_ONLY: 'READ_ONLY',
+  READ_WRITE: 'READ_WRITE',
+} as const;
+export type ApiKeyScope = (typeof ApiKeyScope)[keyof typeof ApiKeyScope];

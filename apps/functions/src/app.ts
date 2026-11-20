@@ -19,6 +19,8 @@ import { analyticsRouter } from './routes/analytics.routes';
 import { notificationsRouter } from './routes/notifications.routes';
 import { billingRouter } from './routes/billing.routes';
 import { adminRouter } from './routes/admin.routes';
+import { apiKeysRouter } from './routes/apiKeys.routes';
+import { mcpRouter } from './routes/mcp.routes';
 import { devRouter } from './routes/dev.routes';
 
 export function createApp() {
@@ -55,6 +57,8 @@ export function createApp() {
   app.use('/api/notifications', notificationsRouter);
   app.use('/api/billing', billingRouter);
   app.use('/api/admin', adminRouter);
+  app.use('/api/api-keys', apiKeysRouter);
+  app.use('/api/mcp', mcpRouter);
   app.use('/api/dev', devRouter);
 
   app.use(notFoundHandler);
