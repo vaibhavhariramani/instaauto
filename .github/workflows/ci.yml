@@ -137,8 +137,19 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
+      # Scoped to explicit function names, not a blanket `functions`. The mobile-app branch's
+      # follow-gate feature (not yet merged to main) has its own scheduled function,
+      # resolveStaleFollowGates, already deployed to this same Firebase project - a blanket
+      # `functions` deploy does a full sync against everything currently live and aborts the
+      # whole deploy when it finds a function in the cloud that main's source doesn't define
+      # (non-interactive mode can't prompt to confirm the deletion). Naming functions explicitly
+      # skips that comparison entirely for anything not listed, so main's deploys can proceed
+      # without touching or deleting mobile-app's still-separately-deployed function.
+      # Keep this list in sync with the `export const ...` names in apps/functions/src/index.ts -
+      # add a new one here when you add one there. Once mobile-app's backend work (including
+      # resolveStaleFollowGates) merges into main, this can go back to a blanket `functions`.
       - name: Deploy to Firebase (Hosting + Functions)
-        run: npx firebase-tools deploy --only hosting,functions --project instaautomation-1da00 --non-interactive
+        run: npx firebase-tools deploy --only hosting,functions:api,functions:refreshExpiringTokens,functions:retryFailedMessages --project instaautomation-1da00 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
 
