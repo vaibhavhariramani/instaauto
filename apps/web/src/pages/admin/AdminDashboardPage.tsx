@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
           icon={Activity}
           label="DMs sent (30 days)"
           value={data.dmsSentLast30Days.toLocaleString()}
-          to={`${ROUTES.adminAutomations}?sort=dms`}
+          to={`${ROUTES.adminAutomations}?sortBy=dms&sortDir=desc`}
         />
         <StatCard
           icon={Users}
