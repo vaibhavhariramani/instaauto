@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@/api/auth';
@@ -75,7 +76,9 @@ export function GoogleSignInButton() {
           text: 'continue_with',
         });
       })
-      .catch(() => toast.error('Could not load Google Sign-In. Check your connection and try again.'));
+      .catch(() =>
+        toast.error('Could not load Google Sign-In. Check your connection and try again.'),
+      );
 
     return () => {
       cancelled = true;
@@ -85,10 +88,22 @@ export function GoogleSignInButton() {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div ref={buttonRef} />
+      {/* The GIS widget renders its own button we can't put a spinner inside, so dim it and
+          show feedback alongside it instead — otherwise the backend round trip (which can take
+          a few seconds on a cold Cloud Functions instance) looks like the click did nothing. */}
+      <div className={googleLogin.isPending ? 'pointer-events-none opacity-50' : undefined}>
+        <div ref={buttonRef} />
+      </div>
+      {googleLogin.isPending && (
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Signing you in…
+        </p>
+      )}
       {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
         <p className="max-w-xs text-center text-xs text-muted-foreground">
-          Set <code>VITE_GOOGLE_CLIENT_ID</code> in <code>apps/web/.env</code> to enable Google Sign-In.
+          Set <code>VITE_GOOGLE_CLIENT_ID</code> in <code>apps/web/.env</code> to enable Google
+          Sign-In.
         </p>
       )}
     </div>
