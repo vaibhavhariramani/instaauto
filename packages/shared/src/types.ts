@@ -265,6 +265,25 @@ export interface AdminUserDetailDto {
   recentAdminActions: AdminActionLogDto[];
 }
 
+export interface AdminAutomationListItemDto {
+  id: string;
+  name: string;
+  isActive: boolean;
+  totalTriggers: number;
+  totalDMsSent: number;
+  createdAt: string;
+  ownerId: string;
+  ownerEmail: string;
+  ownerName: string;
+}
+
+export interface AdminAutomationListResponseDto {
+  items: AdminAutomationListItemDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface AdminDashboardDto {
   totalUsers: number;
   newUsersLast7Days: number;

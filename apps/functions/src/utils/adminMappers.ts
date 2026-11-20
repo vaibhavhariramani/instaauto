@@ -6,6 +6,7 @@ import type {
   User,
 } from '@prisma/client';
 import type {
+  AdminAutomationListItemDto,
   AdminDashboardDto,
   AdminUserDetailDto,
   AdminUserListItemDto,
@@ -111,4 +112,20 @@ export function toAdminUserDetailDto(user: User, extras: UserDetailExtras): Admi
 
 export function toAdminDashboardDto(stats: AdminDashboardDto): AdminDashboardDto {
   return stats;
+}
+
+type AutomationWithOwner = Automation & { user: Pick<User, 'id' | 'email' | 'name'> };
+
+export function toAdminAutomationListItemDto(a: AutomationWithOwner): AdminAutomationListItemDto {
+  return {
+    id: a.id,
+    name: a.name,
+    isActive: a.isActive,
+    totalTriggers: a.totalTriggers,
+    totalDMsSent: a.totalDMsSent,
+    createdAt: a.createdAt.toISOString(),
+    ownerId: a.user.id,
+    ownerEmail: a.user.email,
+    ownerName: a.user.name,
+  };
 }

@@ -1,5 +1,6 @@
 import {
   PLAN_TIERS,
+  type AdminAutomationListQuery,
   type AdminUpdateUserPlanInput,
   type AdminUserListQuery,
 } from '@instaauto/shared';
@@ -12,6 +13,7 @@ import {
   toAdminUserListItemDto,
   toAdminUserDetailDto,
   toAdminDashboardDto,
+  toAdminAutomationListItemDto,
 } from '../utils/adminMappers';
 
 const ENTITLED_STATUSES: SubscriptionStatus[] = [
@@ -81,7 +83,11 @@ export async function getDashboard() {
 
 export async function listUsers(query: AdminUserListQuery) {
   const where = {
-    ...(query.plan ? { subscriptionPlan: query.plan } : {}),
+    ...(query.plan === 'PAID'
+      ? { subscriptionPlan: { not: 'STARTER' as const } }
+      : query.plan
+        ? { subscriptionPlan: query.plan }
+        : {}),
     ...(query.search
       ? {
           OR: [
@@ -135,6 +141,43 @@ export async function listUsers(query: AdminUserListQuery) {
   );
 
   return { items, total, page: query.page, pageSize: query.pageSize };
+}
+
+export async function listAutomations(query: AdminAutomationListQuery) {
+  const where = query.search
+    ? {
+        OR: [
+          { name: { contains: query.search, mode: 'insensitive' as const } },
+          { user: { email: { contains: query.search, mode: 'insensitive' as const } } },
+          { user: { name: { contains: query.search, mode: 'insensitive' as const } } },
+        ],
+      }
+    : {};
+
+  const orderBy =
+    query.sort === 'dms'
+      ? { totalDMsSent: 'desc' as const }
+      : query.sort === 'recent'
+        ? { createdAt: 'desc' as const }
+        : { totalTriggers: 'desc' as const };
+
+  const [rows, total] = await Promise.all([
+    prisma.automation.findMany({
+      where,
+      orderBy,
+      skip: (query.page - 1) * query.pageSize,
+      take: query.pageSize,
+      include: { user: { select: { id: true, email: true, name: true } } },
+    }),
+    prisma.automation.count({ where }),
+  ]);
+
+  return {
+    items: rows.map(toAdminAutomationListItemDto),
+    total,
+    page: query.page,
+    pageSize: query.pageSize,
+  };
 }
 
 export async function getUserDetail(targetUserId: string) {

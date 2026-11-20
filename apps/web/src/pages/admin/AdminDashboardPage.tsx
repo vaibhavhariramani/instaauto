@@ -11,14 +11,16 @@ function StatCard({
   label,
   value,
   hint,
+  to,
 }: {
   icon: typeof Users;
   label: string;
   value: string;
   hint?: string;
+  to?: string;
 }) {
-  return (
-    <Card>
+  const content = (
+    <Card className={to ? 'transition-colors hover:border-primary/50' : undefined}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -28,6 +30,14 @@ function StatCard({
         {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
       </CardContent>
     </Card>
+  );
+
+  return to ? (
+    <Link to={to} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
   );
 }
 
@@ -58,44 +68,56 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={Users} label="Total users" value={data.totalUsers.toLocaleString()} />
+        <StatCard
+          icon={Users}
+          label="Total users"
+          value={data.totalUsers.toLocaleString()}
+          to={ROUTES.adminUsers}
+        />
         <StatCard
           icon={Users}
           label="New (7 days)"
           value={data.newUsersLast7Days.toLocaleString()}
           hint={`${data.newUsersLast30Days.toLocaleString()} in last 30 days`}
+          to={ROUTES.adminUsers}
         />
         <StatCard
           icon={DollarSign}
           label="Active paid subscriptions"
           value={data.activePaidSubscriptions.toLocaleString()}
           hint={`${data.pastDueSubscriptions.toLocaleString()} past due`}
+          to={`${ROUTES.adminUsers}?plan=PAID`}
         />
         <StatCard
           icon={DollarSign}
           label="Estimated MRR"
           value={`$${data.estimatedMrr.toLocaleString()}`}
           hint="Estimate, not verified revenue"
+          to={`${ROUTES.adminUsers}?plan=PAID`}
         />
         <StatCard
           icon={Zap}
           label="Active automations"
           value={data.totalActiveAutomations.toLocaleString()}
+          to={ROUTES.adminAutomations}
         />
         <StatCard
           icon={Activity}
           label="DMs sent (30 days)"
           value={data.dmsSentLast30Days.toLocaleString()}
+          to={`${ROUTES.adminAutomations}?sort=dms`}
         />
         <StatCard
           icon={Users}
           label={`${PLAN_TIERS.STARTER.label} plan`}
           value={data.planCounts.STARTER.toLocaleString()}
+          to={`${ROUTES.adminUsers}?plan=STARTER`}
         />
         <StatCard
           icon={AlertTriangle}
           label={`${PLAN_TIERS.PRO.label} / ${PLAN_TIERS.BUSINESS.label}`}
           value={(data.planCounts.PRO + data.planCounts.BUSINESS).toLocaleString()}
+          to={`${ROUTES.adminUsers}?plan=PAID`}
         />
       </div>
     </div>

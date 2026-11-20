@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  AdminAutomationListResponseDto,
   AdminDashboardDto,
   AdminUpdateUserPlanInput,
   AdminUserDetailDto,
@@ -23,7 +24,7 @@ export interface AdminUsersParams {
   page: number;
   pageSize: number;
   search?: string;
-  plan?: SubscriptionPlan;
+  plan?: SubscriptionPlan | 'PAID';
 }
 
 export function useAdminUsers(params: AdminUsersParams) {
@@ -47,6 +48,26 @@ export function useAdminUser(id: string | undefined) {
       return data;
     },
     enabled: Boolean(id),
+  });
+}
+
+export interface AdminAutomationsParams {
+  page: number;
+  pageSize: number;
+  search?: string;
+  sort?: 'triggers' | 'dms' | 'recent';
+}
+
+export function useAdminAutomations(params: AdminAutomationsParams) {
+  return useQuery({
+    queryKey: queryKeys.adminAutomations(params),
+    queryFn: async () => {
+      const { data } = await apiClient.get<AdminAutomationListResponseDto>('/admin/automations', {
+        params,
+      });
+      return data;
+    },
+    placeholderData: (prev) => prev,
   });
 }
 

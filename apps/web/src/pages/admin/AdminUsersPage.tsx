@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Search, Users } from 'lucide-react';
 import { PLAN_TIERS, type SubscriptionPlan } from '@instaauto/shared';
@@ -43,12 +43,20 @@ const STATUS_BADGE: Record<string, 'success' | 'warning' | 'destructive' | 'seco
   NONE: 'secondary',
 };
 
+type PlanFilter = SubscriptionPlan | 'PAID' | 'ALL';
+
+function isPlanFilter(value: string | null): value is PlanFilter {
+  return value === 'STARTER' || value === 'PRO' || value === 'BUSINESS' || value === 'PAID';
+}
+
 export default function AdminUsersPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
-  const [plan, setPlan] = useState<SubscriptionPlan | 'ALL'>('ALL');
+  const initialPlan = searchParams.get('plan');
+  const [plan, setPlan] = useState<PlanFilter>(isPlanFilter(initialPlan) ? initialPlan : 'ALL');
 
   const { data, isLoading, isFetching } = useAdminUsers({
     page,
@@ -77,8 +85,17 @@ export default function AdminUsersPage() {
         <Select
           value={plan}
           onValueChange={(v) => {
-            setPlan(v as SubscriptionPlan | 'ALL');
+            const next = v as PlanFilter;
+            setPlan(next);
             setPage(1);
+            setSearchParams(
+              (prev) => {
+                if (next === 'ALL') prev.delete('plan');
+                else prev.set('plan', next);
+                return prev;
+              },
+              { replace: true },
+            );
           }}
         >
           <SelectTrigger className="w-full sm:w-44">
@@ -89,6 +106,9 @@ export default function AdminUsersPage() {
             <SelectItem value="STARTER">{PLAN_TIERS.STARTER.label}</SelectItem>
             <SelectItem value="PRO">{PLAN_TIERS.PRO.label}</SelectItem>
             <SelectItem value="BUSINESS">{PLAN_TIERS.BUSINESS.label}</SelectItem>
+            <SelectItem value="PAID">
+              {PLAN_TIERS.PRO.label} + {PLAN_TIERS.BUSINESS.label}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
