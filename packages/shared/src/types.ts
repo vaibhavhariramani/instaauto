@@ -89,7 +89,13 @@ export interface AutomationDto {
   replyMessage: string;
   templateId: string | null;
   publicReplyEnabled: boolean;
-  publicReplyMessage: string | null;
+  publicReplyMessages: string[];
+  requireFollowBeforeCta: boolean;
+  followGateMessage: string | null;
+  followButtonLabel: string | null;
+  sendCtaIfNeverFollows: boolean;
+  openingButtonLabel: string | null;
+  ctaLinkButtons: { label: string; url: string }[];
   dmOncePerUser: boolean;
   ignoreCreatorComments: boolean;
   isActive: boolean;
@@ -172,6 +178,9 @@ export interface AnalyticsDto {
 
 export interface AuthTokensDto {
   accessToken: string;
+  // Only meaningful to clients that manage their own refresh tokens (mobile,
+  // for multi-account switching) - web relies on the httpOnly cookie instead.
+  refreshToken: string;
   user: UserDto;
 }
 

@@ -1,0 +1,31 @@
+1. SCREEN RECORDING
+Demo video URL: <record a short screen capture on a physical device showing: login, Dashboard, creating an automation on a Reel, the Messages/Comments tabs, Settings, and account deletion — then paste the link here>
+
+2. APP PURPOSE
+Problem it solves: Instagram creators and small businesses get flooded with keyword comments (e.g. "guide", "link") on their Reels and can't reply to each one with the right DM fast enough.
+Value it provides: InstaAuto watches a creator's own connected Instagram account for comments matching chosen keywords and automatically sends the matching DM reply (and optionally a public comment reply), so the creator never manually copy-pastes the same response hundreds of times.
+
+3. ACCESS INSTRUCTIONS AND TEST CREDENTIALS
+Steps to reach the core features:
+1. Launch the app and sign in with the test account below.
+2. The Dashboard shows a demo-connected Instagram account with real automations, message, and comment history already populated — no further setup is required to see the app in use.
+3. Tap "Automations" to view/create a keyword-triggered auto-reply rule on a Reel.
+4. Tap "Messages" or "Comments" to view the inbox of Instagram interactions.
+5. Tap "Settings" → "Instagram accounts" to see the connect/disconnect flow, and "Delete account" to see in-app account deletion.
+Test account username: <demo email>
+Test account password: <demo password>
+Note: this account stays active and free of 2FA indefinitely for App Review.
+
+4. EXTERNAL SERVICES
+Service / Purpose
+Firebase Authentication / user sign-in (email+password, Google, Sign in with Apple)
+Firebase Cloud Functions / backend API
+Instagram Graph API (Meta) / reading the creator's own comments/DMs and sending replies on their connected account
+Firebase Cloud Messaging / push notifications for new comments and automation activity
+Supabase (PostgreSQL) / application data storage
+
+5. REGIONAL DIFFERENCES
+This app works the same in every region.
+
+6. REGULATED INDUSTRY DOCUMENTATION
+Not applicable — this is a social media management utility, not a regulated-industry app.

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
+import appleSignin from 'apple-signin-auth';
 import { prisma } from '../lib/prisma';
 import { config } from '../config/env';
 import { hashToken } from '../lib/crypto';
@@ -11,6 +12,12 @@ import type { User } from '@prisma/client';
 const BCRYPT_ROUNDS = 12;
 
 const googleClient = new OAuth2Client(config.GOOGLE_CLIENT_ID);
+
+// Web (Google Identity Services) and mobile (native Google Sign-In) each need their
+// own OAuth client type, so a token can legitimately be audienced to either one.
+const googleTokenAudiences = [config.GOOGLE_CLIENT_ID, config.GOOGLE_MOBILE_CLIENT_ID].filter(
+  (id): id is string => Boolean(id),
+);
 
 interface SessionMeta {
   userAgent?: string;
@@ -44,7 +51,17 @@ async function issueSession(user: User, meta: SessionMeta) {
 }
 
 export async function loginWithGoogle(idToken: string, meta: SessionMeta) {
-  const ticket = await googleClient.verifyIdToken({ idToken, audience: config.GOOGLE_CLIENT_ID });
+  let ticket;
+  try {
+    ticket = await googleClient.verifyIdToken({ idToken, audience: googleTokenAudiences });
+  } catch (err) {
+    // Wrong/expired token, or the token's audience doesn't match GOOGLE_CLIENT_ID or
+    // GOOGLE_MOBILE_CLIENT_ID (e.g. one of them is missing, or in the wrong GCP
+    // project) - surface as a clear 401 instead of an opaque 500.
+    throw ApiError.unauthorized(
+      `Invalid Google credential: ${err instanceof Error ? err.message : 'verification failed'}`,
+    );
+  }
   const payload = ticket.getPayload();
   if (!payload?.email || !payload.sub) {
     throw ApiError.unauthorized('Invalid Google credential');
@@ -87,6 +104,50 @@ export async function loginWithGoogle(idToken: string, meta: SessionMeta) {
 
   await prisma.auditLog.create({
     data: { userId: user.id, action: 'auth.google_login', ip: meta.ip },
+  });
+
+  return issueSession(user, meta);
+}
+
+export async function loginWithApple(
+  identityToken: string,
+  fullName: string | null | undefined,
+  meta: SessionMeta,
+) {
+  let payload;
+  try {
+    payload = await appleSignin.verifyIdToken(identityToken, { audience: config.APPLE_BUNDLE_ID });
+  } catch (err) {
+    throw ApiError.unauthorized(
+      `Invalid Apple credential: ${err instanceof Error ? err.message : 'verification failed'}`,
+    );
+  }
+  if (!payload.email || !payload.sub) {
+    throw ApiError.unauthorized('Invalid Apple credential');
+  }
+
+  // Same googleId-then-email fallback as loginWithGoogle, so an existing email/password
+  // (or Google) account gets linked instead of hitting the unique email constraint.
+  let user = await prisma.user.findUnique({ where: { appleId: payload.sub } });
+
+  if (!user) {
+    const existingByEmail = await prisma.user.findUnique({ where: { email: payload.email } });
+    user = existingByEmail
+      ? await prisma.user.update({
+          where: { id: existingByEmail.id },
+          data: { appleId: payload.sub, name: existingByEmail.name ?? fullName ?? undefined },
+        })
+      : await prisma.user.create({
+          data: {
+            appleId: payload.sub,
+            email: payload.email,
+            name: fullName ?? payload.email.split('@')[0]!,
+          },
+        });
+  }
+
+  await prisma.auditLog.create({
+    data: { userId: user.id, action: 'auth.apple_login', ip: meta.ip },
   });
 
   return issueSession(user, meta);
