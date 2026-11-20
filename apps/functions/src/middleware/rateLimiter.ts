@@ -1,4 +1,5 @@
 import rateLimit from 'express-rate-limit';
+import { extractBearerToken, hashApiKey } from '../lib/apiKeys';
 
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -37,4 +38,23 @@ export const apiRateLimiter = rateLimit({
   limit: 120,
   standardHeaders: true,
   legacyHeaders: false,
+});
+
+// Per API key (not per IP): AI tools run from shared networks/cloud IPs, and a runaway agent loop
+// should throttle only its own key. The key is hashed so the secret never sits in the limiter's
+// in-memory store; unauthenticated requests fall back to the caller's IP.
+export const mcpRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const token = extractBearerToken(req.headers.authorization);
+    return token ? `key:${hashApiKey(token).slice(0, 16)}` : `ip:${req.ip ?? 'unknown'}`;
+  },
+  message: {
+    jsonrpc: '2.0',
+    id: null,
+    error: { code: -32029, message: 'Rate limit exceeded: max 60 requests per minute per API key' },
+  },
 });

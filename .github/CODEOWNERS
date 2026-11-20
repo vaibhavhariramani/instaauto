@@ -15,6 +15,14 @@
 /apps/functions/src/services/entitlementService.ts      @vaibhavhariramani
 /apps/functions/scripts/                                @vaibhavhariramani
 
+# API keys / MCP endpoint (long-lived credentials that act on a user's account)
+/apps/functions/src/mcp/                                @vaibhavhariramani
+/apps/functions/src/lib/apiKeys.ts                      @vaibhavhariramani
+/apps/functions/src/lib/logger.ts                       @vaibhavhariramani
+/apps/functions/src/services/apiKeyService.ts           @vaibhavhariramani
+/apps/functions/src/routes/mcp.routes.ts                @vaibhavhariramani
+/apps/functions/src/routes/apiKeys.routes.ts            @vaibhavhariramani
+
 # Billing and webhooks
 /apps/functions/src/services/stripeService.ts           @vaibhavhariramani
 /apps/functions/src/routes/billing.routes.ts            @vaibhavhariramani

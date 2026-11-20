@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MatchType, SubscriptionPlan, TemplateCategory, Theme } from './enums.js';
+import { ApiKeyScope, MatchType, SubscriptionPlan, TemplateCategory, Theme } from './enums.js';
 
 export const paginationQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -249,3 +249,18 @@ export const simulateCommentSchema = z.object({
   commentText: z.string().trim().min(1).max(300),
 });
 export type SimulateCommentInput = z.infer<typeof simulateCommentSchema>;
+
+export const MAX_ACTIVE_API_KEYS = 10;
+
+export const createApiKeySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Give the key a name')
+    .max(60, 'Name is too long (max 60 characters)'),
+  // Read-only is the default: an AI tool can look but not change anything unless the user
+  // explicitly opts in to write access.
+  scope: z.nativeEnum(ApiKeyScope).default(ApiKeyScope.READ_ONLY),
+  expiresInDays: z.number().int().min(1).max(365).optional(),
+});
+export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;

@@ -14,6 +14,7 @@ export const ROUTES = {
   instagram: '/instagram',
   settings: '/settings',
   billing: '/billing',
+  integrations: '/integrations',
   admin: '/admin',
   adminUsers: '/admin/users',
   adminUserDetail: (id: string) => `/admin/users/${id}`,

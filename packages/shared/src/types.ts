@@ -1,4 +1,5 @@
 import type {
+  ApiKeyScope,
   InstagramAccountStatus,
   MatchType,
   MessageDirection,
@@ -304,4 +305,23 @@ export interface AdminDashboardDto {
   dmsSentLast30Days: number;
   /** Sum of priceMonthly across ACTIVE/TRIALING paid plans - an estimate, not verified revenue. */
   estimatedMrr: number;
+}
+
+// ─── API keys (MCP integration) ───────────────────────────────────────────
+
+export interface ApiKeyDto {
+  id: string;
+  name: string;
+  /** First characters of the key, enough to recognise it in a list - never the full secret. */
+  prefix: string;
+  scope: ApiKeyScope;
+  createdAt: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  revokedAt: string | null;
+}
+
+/** Returned exactly once, when a key is created - the secret cannot be retrieved again. */
+export interface CreatedApiKeyDto extends ApiKeyDto {
+  secret: string;
 }
