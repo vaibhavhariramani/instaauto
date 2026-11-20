@@ -31,7 +31,12 @@ apps/functions/prisma/*.db
 .vite/
 .turbo/
 
-.claude/scheduled_tasks.lock
+# Claude Code local workspace config — never public, not part of the app
+.claude/
+
+# Internal security/billing audit notes — documents a (fixed) vulnerability's root cause
+# in detail; kept locally for reference, never published in the public repo
+docs/security-billing-audit.md
 
 # One-off local/maintenance scripts — not part of the app
 apps/functions/backfill*.mjs

@@ -6,7 +6,7 @@ export const PLAN_TIERS: Record<
     label: string;
     // ISO 4217, explicit per requirement 9 - every price below is in this currency. Changing it
     // is a Stripe-account/Price-object decision (settlement eligibility, international payments),
-    // never a silent code assumption - see docs/security-billing-audit.md.
+    // never a silent code assumption.
     currency: 'USD';
     priceMonthly: number;
     // 20% off (priceMonthly * 12), matching the "-20%" yearly toggle copy already on the pricing
