@@ -10,11 +10,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ReelSelector } from '@/components/automations/ReelSelector';
 import { KeywordInput } from '@/components/automations/KeywordInput';
 import { ReplyMessageEditor } from '@/components/automations/ReplyMessageEditor';
+import { MultiTextEditor } from '@/components/automations/MultiTextEditor';
+import { LinkButtonsEditor } from '@/components/automations/LinkButtonsEditor';
+import { DmFlowPreview } from '@/components/automations/DmFlowPreview';
+import { Textarea } from '@/components/ui/textarea';
 import { useInstagramAccounts, useReels } from '@/api/instagram';
 import { useAutomation, useCreateAutomation, useUpdateAutomation } from '@/api/automations';
 import { useTemplates } from '@/api/templates';
@@ -26,6 +36,26 @@ const MATCH_TYPE_LABELS: Record<MatchType, string> = {
   [MatchType.CONTAINS]: 'Contains — keyword appears anywhere in the comment',
   [MatchType.ANY_KEYWORD]: 'Any keyword — matches a whole word from the list',
 };
+
+// Blank rows in the variation / link-button editors are normal while typing, so they're dropped
+// here before validation rather than surfacing as confusing per-row schema errors.
+function sanitizeInput(values: AutomationInput): AutomationInput {
+  const requireFollow = Boolean(values.requireFollowBeforeCta);
+  const ctaLinkButtons = (values.ctaLinkButtons ?? [])
+    .map((b) => ({ label: b.label.trim(), url: b.url.trim() }))
+    .filter((b) => b.label || b.url);
+  return {
+    ...values,
+    publicReplyMessages: (values.publicReplyMessages ?? []).map((m) => m.trim()).filter(Boolean),
+    ctaLinkButtons,
+    followGateMessage: requireFollow ? values.followGateMessage?.trim() || null : null,
+    followButtonLabel: requireFollow ? values.followButtonLabel?.trim() || null : null,
+    openingButtonLabel:
+      ctaLinkButtons.length === 0 ? values.openingButtonLabel?.trim() || null : null,
+  };
+}
+
+const baseResolver = zodResolver(automationSchema);
 
 export default function AutomationBuilderPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,7 +81,8 @@ export default function AutomationBuilderPage() {
     reset,
     formState: { errors },
   } = useForm<AutomationInput>({
-    resolver: zodResolver(automationSchema),
+    resolver: (values, context, options) =>
+      baseResolver(sanitizeInput(values as AutomationInput), context, options),
     defaultValues: {
       name: '',
       instagramAccountId: '',
@@ -60,7 +91,13 @@ export default function AutomationBuilderPage() {
       matchType: MatchType.CONTAINS,
       replyMessage: '',
       publicReplyEnabled: false,
-      publicReplyMessage: '',
+      publicReplyMessages: [],
+      requireFollowBeforeCta: false,
+      followGateMessage: '',
+      followButtonLabel: '',
+      sendCtaIfNeverFollows: true,
+      openingButtonLabel: '',
+      ctaLinkButtons: [],
       dmOncePerUser: true,
       ignoreCreatorComments: true,
       isActive: true,
@@ -88,7 +125,13 @@ export default function AutomationBuilderPage() {
         replyMessage: existing.replyMessage,
         templateId: existing.templateId,
         publicReplyEnabled: existing.publicReplyEnabled,
-        publicReplyMessage: existing.publicReplyMessage,
+        publicReplyMessages: existing.publicReplyMessages,
+        requireFollowBeforeCta: existing.requireFollowBeforeCta,
+        followGateMessage: existing.followGateMessage ?? '',
+        followButtonLabel: existing.followButtonLabel ?? '',
+        sendCtaIfNeverFollows: existing.sendCtaIfNeverFollows,
+        openingButtonLabel: existing.openingButtonLabel ?? '',
+        ctaLinkButtons: existing.ctaLinkButtons,
         dmOncePerUser: existing.dmOncePerUser,
         ignoreCreatorComments: existing.ignoreCreatorComments,
         isActive: existing.isActive,
@@ -102,6 +145,9 @@ export default function AutomationBuilderPage() {
     }
   }, [existing, reset]);
 
+  const requireFollow = watch('requireFollowBeforeCta');
+  const sendCtaIfNeverFollows = watch('sendCtaIfNeverFollows');
+  const ctaLinkButtons = watch('ctaLinkButtons') ?? [];
   const accountId = watch('instagramAccountId');
   const { data: reels, isLoading: reelsLoading } = useReels(accountId || undefined);
 
@@ -133,8 +179,12 @@ export default function AutomationBuilderPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">{isEditMode ? 'Edit automation' : 'New automation'}</h2>
-          <p className="text-sm text-muted-foreground">Reply to comments on a specific Reel automatically.</p>
+          <h2 className="text-xl font-semibold tracking-tight">
+            {isEditMode ? 'Edit automation' : 'New automation'}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Reply to comments on a specific Reel automatically.
+          </p>
         </div>
       </div>
 
@@ -196,7 +246,9 @@ export default function AutomationBuilderPage() {
                 }}
               />
             )}
-            {errors.reelId && <p className="mt-2 text-xs text-destructive">{errors.reelId.message}</p>}
+            {errors.reelId && (
+              <p className="mt-2 text-xs text-destructive">{errors.reelId.message}</p>
+            )}
           </CardContent>
         </Card>
 
@@ -210,7 +262,9 @@ export default function AutomationBuilderPage() {
               name="triggerKeywords"
               render={({ field }) => <KeywordInput value={field.value} onChange={field.onChange} />}
             />
-            {errors.triggerKeywords && <p className="text-xs text-destructive">{errors.triggerKeywords.message}</p>}
+            {errors.triggerKeywords && (
+              <p className="text-xs text-destructive">{errors.triggerKeywords.message}</p>
+            )}
 
             <div className="space-y-2">
               <Label>Match type</Label>
@@ -238,7 +292,16 @@ export default function AutomationBuilderPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">DM reply</CardTitle>
+            <CardTitle className="text-base">
+              {requireFollow
+                ? 'Opening message — sent once they follow'
+                : 'Opening DM — sent first, every time'}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {requireFollow
+                ? 'Since "Require follow" is on below, this is sent after they tap to confirm they follow you, not as the very first message.'
+                : 'This message (and its button) is what they see right after commenting.'}
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {templates && templates.length > 0 && (
@@ -271,9 +334,46 @@ export default function AutomationBuilderPage() {
             <Controller
               control={control}
               name="replyMessage"
-              render={({ field }) => <ReplyMessageEditor value={field.value} onChange={field.onChange} />}
+              render={({ field }) => (
+                <ReplyMessageEditor value={field.value} onChange={field.onChange} />
+              )}
             />
-            {errors.replyMessage && <p className="text-xs text-destructive">{errors.replyMessage.message}</p>}
+            {errors.replyMessage && (
+              <p className="text-xs text-destructive">{errors.replyMessage.message}</p>
+            )}
+
+            <div className="space-y-2 border-t border-border pt-4">
+              <Label>Link buttons (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Up to 3 real tappable buttons that open a URL — shown under this message. No link
+                yet? Use a plain button label instead; tapping it just sends a reply, it won&apos;t
+                open anything.
+              </p>
+              <Controller
+                control={control}
+                name="ctaLinkButtons"
+                render={({ field }) => (
+                  <LinkButtonsEditor values={field.value ?? []} onChange={field.onChange} />
+                )}
+              />
+              {errors.ctaLinkButtons && (
+                <p className="text-xs text-destructive">
+                  {errors.ctaLinkButtons.message ??
+                    'Each link button needs a label (max 20 characters) and a valid URL.'}
+                </p>
+              )}
+              {ctaLinkButtons.length === 0 && (
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="openingButtonLabel">Plain button label (optional, no link)</Label>
+                  <Input
+                    id="openingButtonLabel"
+                    maxLength={20}
+                    placeholder="e.g. Send me the link"
+                    {...register('openingButtonLabel')}
+                  />
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -292,24 +392,126 @@ export default function AutomationBuilderPage() {
               <Controller
                 control={control}
                 name="publicReplyEnabled"
-                render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                )}
               />
             </div>
             {watch('publicReplyEnabled') && (
               <div className="space-y-2">
-                <Label htmlFor="publicReplyMessage">Public reply message</Label>
-                <Input
-                  id="publicReplyMessage"
-                  placeholder="Sent you a DM! 📩 Check your inbox."
-                  {...register('publicReplyMessage')}
+                <Label>Public reply messages</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add a few variations — one is picked at random each time, so replies don&apos;t
+                  look repetitive.
+                </p>
+                <Controller
+                  control={control}
+                  name="publicReplyMessages"
+                  render={({ field }) => (
+                    <MultiTextEditor
+                      values={field.value ?? []}
+                      onChange={field.onChange}
+                      placeholder="Sent you a DM! 📩 Check your inbox."
+                    />
+                  )}
                 />
-                {errors.publicReplyMessage && (
-                  <p className="text-xs text-destructive">{errors.publicReplyMessage.message}</p>
+                {errors.publicReplyMessages && (
+                  <p className="text-xs text-destructive">
+                    {errors.publicReplyMessages.message ?? 'Check your public reply messages.'}
+                  </p>
                 )}
               </div>
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Follow gate</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Require follow before sending the DM</p>
+                <p className="text-xs text-muted-foreground">
+                  Checks if they follow before sending the real message above — if not, loops a
+                  follow reminder until they do (or 24h passes).
+                </p>
+              </div>
+              <Controller
+                control={control}
+                name="requireFollowBeforeCta"
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                )}
+              />
+            </div>
+
+            {requireFollow && (
+              <div className="space-y-4 border-t border-border pt-4">
+                <p className="text-xs text-muted-foreground">
+                  With this on, the real message above is sent only once they&apos;re confirmed
+                  following. The message below goes out first instead — keep it generic, since we
+                  don&apos;t know their follow status yet.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="followGateMessage">Pre-check message (sent first)</Label>
+                  <Textarea
+                    id="followGateMessage"
+                    rows={2}
+                    maxLength={1000}
+                    placeholder="Thanks for stopping by! Tap below and I'll send you access shortly ✨"
+                    {...register('followGateMessage')}
+                  />
+                  {errors.followGateMessage && (
+                    <p className="text-xs text-destructive">{errors.followGateMessage.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="followButtonLabel">Visit-profile button label (optional)</Label>
+                  <Input
+                    id="followButtonLabel"
+                    maxLength={20}
+                    placeholder="e.g. Visit Profile"
+                    {...register('followButtonLabel')}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Opens your profile. If they are not following yet, we also add a fixed
+                    &ldquo;I&apos;m following ✅&rdquo; button that rechecks their follow status
+                    when tapped.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+                  <div>
+                    <p className="text-sm font-medium">If they never follow</p>
+                    <p className="text-xs text-muted-foreground">
+                      {sendCtaIfNeverFollows
+                        ? 'Send the link anyway after 24 hours'
+                        : "Only followers get the link — they'll keep getting reminded"}
+                    </p>
+                  </div>
+                  <Controller
+                    control={control}
+                    name="sendCtaIfNeverFollows"
+                    render={({ field }) => (
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    )}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <DmFlowPreview
+          requireFollow={requireFollow}
+          openingMessage={watch('replyMessage') ?? ''}
+          preCheckMessage={watch('followGateMessage') ?? ''}
+          followButtonLabel={watch('followButtonLabel') ?? ''}
+          plainButtonLabel={watch('openingButtonLabel') ?? ''}
+          linkButtons={ctaLinkButtons}
+          sendCtaIfNeverFollows={sendCtaIfNeverFollows}
+        />
 
         <Card>
           <CardHeader>
@@ -319,34 +521,46 @@ export default function AutomationBuilderPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Only once per user</p>
-                <p className="text-xs text-muted-foreground">Never DM the same commenter twice for this automation.</p>
+                <p className="text-xs text-muted-foreground">
+                  Never DM the same commenter twice for this automation.
+                </p>
               </div>
               <Controller
                 control={control}
                 name="dmOncePerUser"
-                render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                )}
               />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Ignore your own comments</p>
-                <p className="text-xs text-muted-foreground">Don&apos;t trigger a DM when you comment on your own Reel.</p>
+                <p className="text-xs text-muted-foreground">
+                  Don&apos;t trigger a DM when you comment on your own Reel.
+                </p>
               </div>
               <Controller
                 control={control}
                 name="ignoreCreatorComments"
-                render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                )}
               />
             </div>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Active</p>
-                <p className="text-xs text-muted-foreground">Turn off to pause this automation without deleting it.</p>
+                <p className="text-xs text-muted-foreground">
+                  Turn off to pause this automation without deleting it.
+                </p>
               </div>
               <Controller
                 control={control}
                 name="isActive"
-                render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                render={({ field }) => (
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                )}
               />
             </div>
           </CardContent>

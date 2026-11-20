@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { notificationPrefsSchema, updateProfileSchema } from '@instaauto/shared';
+import { notificationPrefsSchema, pushTokenSchema, updateProfileSchema } from '@instaauto/shared';
 import { requireAuth } from '../middleware/auth';
 import { validateRequest } from '../middleware/validateRequest';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -9,11 +9,20 @@ export const meRouter = Router();
 meRouter.use(requireAuth);
 
 meRouter.get('/', asyncHandler(meController.getMe));
-meRouter.patch('/', validateRequest({ body: updateProfileSchema }), asyncHandler(meController.updateMe));
+meRouter.patch(
+  '/',
+  validateRequest({ body: updateProfileSchema }),
+  asyncHandler(meController.updateMe),
+);
 meRouter.post('/complete-onboarding', asyncHandler(meController.completeOnboarding));
 meRouter.patch(
   '/notifications-prefs',
   validateRequest({ body: notificationPrefsSchema }),
   asyncHandler(meController.updateNotificationPrefs),
+);
+meRouter.post(
+  '/push-token',
+  validateRequest({ body: pushTokenSchema }),
+  asyncHandler(meController.registerPushToken),
 );
 meRouter.delete('/', asyncHandler(meController.deleteMe));

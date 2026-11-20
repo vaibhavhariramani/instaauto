@@ -17,7 +17,21 @@ const envSchema = z.object({
   FRONTEND_URL: z.string().url().default('http://localhost:5173'),
   COOKIE_DOMAIN: z.string().optional(),
 
+  // The mobile app's custom URL scheme (see apps/mobile/app.config.ts `scheme`) - used to
+  // redirect the Instagram OAuth callback straight back into the native app (same scheme for
+  // both iOS and Android builds, since they share one Expo codebase/bundle identifier).
+  MOBILE_APP_SCHEME: z.string().default('instaauto'),
+
+  // The web app's OAuth client (Google Identity Services). Required.
   GOOGLE_CLIENT_ID: z.string().min(1, 'GOOGLE_CLIENT_ID is required'),
+  // The mobile app's OAuth client (native Google Sign-In). iOS/Android need their own
+  // client type, so this is a distinct id from GOOGLE_CLIENT_ID - both are accepted as
+  // valid token audiences so web and mobile sign-in work at the same time.
+  GOOGLE_MOBILE_CLIENT_ID: z.string().optional(),
+
+  // Sign in with Apple verifies the identity token's audience against this - the
+  // native app's bundle ID (not a services ID, since this is the native iOS flow).
+  APPLE_BUNDLE_ID: z.string().default('com.vaibhavhariramani.instaauto'),
 
   INSTAGRAM_MOCK_MODE: boolFromString,
 

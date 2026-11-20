@@ -112,11 +112,22 @@ jobs:
       - name: Write production env files
         run: |
           printf '%s\n' "$FUNCTIONS_ENV" > apps/functions/.env.instaautomation-1da00
+          # The installed iOS app verifies Google sign-in against this audience (an OAuth client ID,
+          # not a secret). It can't be rebuilt on demand, so a missing value must fail the deploy
+          # loudly rather than silently break mobile sign-in.
+          if [ -n "$GOOGLE_MOBILE_CLIENT_ID" ]; then
+            printf 'GOOGLE_MOBILE_CLIENT_ID=%s\n' "$GOOGLE_MOBILE_CLIENT_ID" >> apps/functions/.env.instaautomation-1da00
+          fi
+          if ! grep -q '^GOOGLE_MOBILE_CLIENT_ID=.' apps/functions/.env.instaautomation-1da00; then
+            echo "::error::GOOGLE_MOBILE_CLIENT_ID is not set (repo variable or FUNCTIONS_ENV_PRODUCTION) - deploying would break Google sign-in for the installed mobile app."
+            exit 1
+          fi
           cp apps/functions/.env.instaautomation-1da00 apps/functions/.env
           printf '%s\n' "$WEB_ENV" > apps/web/.env
         env:
           FUNCTIONS_ENV: ${{ secrets.FUNCTIONS_ENV_PRODUCTION }}
           WEB_ENV: ${{ secrets.WEB_ENV_PRODUCTION }}
+          GOOGLE_MOBILE_CLIENT_ID: ${{ vars.GOOGLE_MOBILE_CLIENT_ID }}
 
       - name: Apply database migrations
         # Values (e.g. DATABASE_URL) can contain unescaped shell metacharacters like `&`, so
@@ -137,19 +148,13 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
-      # Scoped to explicit function names, not a blanket `functions`. The mobile-app branch's
-      # follow-gate feature (not yet merged to main) has its own scheduled function,
-      # resolveStaleFollowGates, already deployed to this same Firebase project - a blanket
-      # `functions` deploy does a full sync against everything currently live and aborts the
-      # whole deploy when it finds a function in the cloud that main's source doesn't define
-      # (non-interactive mode can't prompt to confirm the deletion). Naming functions explicitly
-      # skips that comparison entirely for anything not listed, so main's deploys can proceed
-      # without touching or deleting mobile-app's still-separately-deployed function.
-      # Keep this list in sync with the `export const ...` names in apps/functions/src/index.ts -
-      # add a new one here when you add one there. Once mobile-app's backend work (including
-      # resolveStaleFollowGates) merges into main, this can go back to a blanket `functions`.
+      # Scoped to explicit function names rather than a blanket `functions`, so a stray function
+      # that exists in the cloud but not in this source can never abort (non-interactive mode can't
+      # confirm deletions) or be silently deleted by a deploy. Keep this list in sync with the
+      # `export const ...` names in apps/functions/src/index.ts - add a new one here when you add
+      # one there.
       - name: Deploy to Firebase (Hosting + Functions)
-        run: npx firebase-tools deploy --only hosting,functions:api,functions:refreshExpiringTokens,functions:retryFailedMessages --project instaautomation-1da00 --non-interactive
+        run: npx firebase-tools deploy --only hosting,functions:api,functions:refreshExpiringTokens,functions:retryFailedMessages,functions:resolveStaleFollowGates --project instaautomation-1da00 --non-interactive
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/gcp-key.json
 
