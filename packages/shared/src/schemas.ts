@@ -9,9 +9,16 @@ export const paginationQuerySchema = z.object({
 export type PaginationQuery = z.infer<typeof paginationQuerySchema>;
 
 export const adminUserListQuerySchema = paginationQuerySchema.extend({
-  plan: z.nativeEnum(SubscriptionPlan).optional(),
+  // 'PAID' is a meta-filter meaning "not STARTER" (Pro + Business combined) - there's no such
+  // SubscriptionPlan value in the DB, it's translated in adminService.listUsers.
+  plan: z.union([z.nativeEnum(SubscriptionPlan), z.literal('PAID')]).optional(),
 });
 export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
+
+export const adminAutomationListQuerySchema = paginationQuerySchema.extend({
+  sort: z.enum(['triggers', 'dms', 'recent']).default('triggers'),
+});
+export type AdminAutomationListQuery = z.infer<typeof adminAutomationListQuerySchema>;
 
 export const adminUpdateUserPlanSchema = z.object({
   plan: z.nativeEnum(SubscriptionPlan),

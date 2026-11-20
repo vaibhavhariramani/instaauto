@@ -17,6 +17,7 @@ export const ROUTES = {
   admin: '/admin',
   adminUsers: '/admin/users',
   adminUserDetail: (id: string) => `/admin/users/${id}`,
+  adminAutomations: '/admin/automations',
   privacyPolicy: '/privacy',
   dataDeletion: '/data-deletion',
   termsOfService: '/terms',

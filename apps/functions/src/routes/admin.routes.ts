@@ -1,5 +1,9 @@
 import { Router } from 'express';
-import { adminUpdateUserPlanSchema, adminUserListQuerySchema } from '@instaauto/shared';
+import {
+  adminAutomationListQuerySchema,
+  adminUpdateUserPlanSchema,
+  adminUserListQuerySchema,
+} from '@instaauto/shared';
 import { requireAuth } from '../middleware/auth';
 import { requireAdmin } from '../middleware/requireAdmin';
 import { validateRequest } from '../middleware/validateRequest';
@@ -21,6 +25,11 @@ adminRouter.get(
   asyncHandler(adminController.listUsers),
 );
 adminRouter.get('/users/:id', asyncHandler(adminController.getUser));
+adminRouter.get(
+  '/automations',
+  validateRequest({ query: adminAutomationListQuerySchema }),
+  asyncHandler(adminController.listAutomations),
+);
 adminRouter.patch(
   '/users/:id/plan',
   validateRequest({ body: adminUpdateUserPlanSchema }),

@@ -33,6 +33,7 @@ const BillingPage = lazy(() => import('@/pages/BillingPage'));
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'));
 const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage'));
 const AdminUserDetailPage = lazy(() => import('@/pages/admin/AdminUserDetailPage'));
+const AdminAutomationsPage = lazy(() => import('@/pages/admin/AdminAutomationsPage'));
 const PrivacyPolicyPage = lazy(() => import('@/pages/PrivacyPolicyPage'));
 const DataDeletionPage = lazy(() => import('@/pages/DataDeletionPage'));
 const TermsOfServicePage = lazy(() => import('@/pages/TermsOfServicePage'));
@@ -79,6 +80,7 @@ function AppRoutes() {
             <Route path={ROUTES.admin} element={<AdminDashboardPage />} />
             <Route path={ROUTES.adminUsers} element={<AdminUsersPage />} />
             <Route path="/admin/users/:id" element={<AdminUserDetailPage />} />
+            <Route path={ROUTES.adminAutomations} element={<AdminAutomationsPage />} />
           </Route>
         </Route>
       </Route>

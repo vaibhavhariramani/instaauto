@@ -18,4 +18,5 @@ export const queryKeys = {
   adminDashboard: ['admin', 'dashboard'] as const,
   adminUsers: (params: unknown) => ['admin', 'users', params] as const,
   adminUser: (id: string) => ['admin', 'users', id] as const,
+  adminAutomations: (params: unknown) => ['admin', 'automations', params] as const,
 };
