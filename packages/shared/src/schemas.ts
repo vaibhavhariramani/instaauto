@@ -12,11 +12,16 @@ export const adminUserListQuerySchema = paginationQuerySchema.extend({
   // 'PAID' is a meta-filter meaning "not STARTER" (Pro + Business combined) - there's no such
   // SubscriptionPlan value in the DB, it's translated in adminService.listUsers.
   plan: z.union([z.nativeEnum(SubscriptionPlan), z.literal('PAID')]).optional(),
+  sortBy: z
+    .enum(['name', 'plan', 'status', 'accounts', 'automations', 'dms', 'joined'])
+    .default('joined'),
+  sortDir: z.enum(['asc', 'desc']).default('desc'),
 });
 export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
 
 export const adminAutomationListQuerySchema = paginationQuerySchema.extend({
-  sort: z.enum(['triggers', 'dms', 'recent']).default('triggers'),
+  sortBy: z.enum(['name', 'owner', 'status', 'triggers', 'dms', 'created']).default('triggers'),
+  sortDir: z.enum(['asc', 'desc']).default('desc'),
 });
 export type AdminAutomationListQuery = z.infer<typeof adminAutomationListQuerySchema>;
 

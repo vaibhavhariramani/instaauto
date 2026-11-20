@@ -6,39 +6,28 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { useAdminAutomations, type AdminAutomationsParams } from '@/api/admin';
+import { SortableHead } from '@/components/admin/SortableHead';
+import { nextSort, type SortDir } from '@/components/admin/sort';
+import { useAdminAutomations, type AdminAutomationSortBy } from '@/api/admin';
 import { ROUTES } from '@/constants/routes';
 
 const PAGE_SIZE = 25;
+const SORT_COLUMNS: readonly AdminAutomationSortBy[] = [
+  'name',
+  'owner',
+  'status',
+  'triggers',
+  'dms',
+  'created',
+];
+const TEXT_COLUMNS: readonly AdminAutomationSortBy[] = ['name', 'owner', 'status'];
 
-type Sort = NonNullable<AdminAutomationsParams['sort']>;
-
-function isSort(value: string | null): value is Sort {
-  return value === 'triggers' || value === 'dms' || value === 'recent';
+function isSortColumn(value: string | null): value is AdminAutomationSortBy {
+  return SORT_COLUMNS.includes(value as AdminAutomationSortBy);
 }
-
-const SORT_LABEL: Record<Sort, string> = {
-  triggers: 'Most triggers',
-  dms: 'Most DMs sent',
-  recent: 'Newest first',
-};
 
 export default function AdminAutomationsPage() {
   const navigate = useNavigate();
@@ -46,57 +35,51 @@ export default function AdminAutomationsPage() {
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
   const search = useDebouncedValue(searchInput, 300);
-  const initialSort = searchParams.get('sort');
-  const [sort, setSort] = useState<Sort>(isSort(initialSort) ? initialSort : 'triggers');
+
+  const urlSortBy = searchParams.get('sortBy');
+  const urlSortDir = searchParams.get('sortDir');
+  const sort = {
+    column: isSortColumn(urlSortBy) ? urlSortBy : ('triggers' as AdminAutomationSortBy),
+    dir: (urlSortDir === 'asc' ? 'asc' : 'desc') as SortDir,
+  };
+
+  const onSort = (column: AdminAutomationSortBy) => {
+    const next = nextSort(column, sort, TEXT_COLUMNS);
+    setPage(1);
+    setSearchParams(
+      (prev) => {
+        prev.set('sortBy', next.column);
+        prev.set('sortDir', next.dir);
+        return prev;
+      },
+      { replace: true },
+    );
+  };
 
   const { data, isLoading, isFetching } = useAdminAutomations({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
-    sort,
+    sortBy: sort.column,
+    sortDir: sort.dir,
   });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
+  const head = { activeColumn: sort.column, dir: sort.dir, onSort };
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search name or owner…"
-            value={searchInput}
-            onChange={(e) => {
-              setSearchInput(e.target.value);
-              setPage(1);
-            }}
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={sort}
-          onValueChange={(v) => {
-            const next = v as Sort;
-            setSort(next);
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search name or owner…"
+          value={searchInput}
+          onChange={(e) => {
+            setSearchInput(e.target.value);
             setPage(1);
-            setSearchParams(
-              (prev) => {
-                prev.set('sort', next);
-                return prev;
-              },
-              { replace: true },
-            );
           }}
-        >
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="triggers">{SORT_LABEL.triggers}</SelectItem>
-            <SelectItem value="dms">{SORT_LABEL.dms}</SelectItem>
-            <SelectItem value="recent">{SORT_LABEL.recent}</SelectItem>
-          </SelectContent>
-        </Select>
+          className="pl-9"
+        />
       </div>
 
       <Card className="overflow-hidden">
@@ -116,12 +99,12 @@ export default function AdminAutomationsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Automation</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Triggers</TableHead>
-                <TableHead>DMs sent</TableHead>
-                <TableHead>Created</TableHead>
+                <SortableHead label="Automation" column="name" {...head} />
+                <SortableHead label="Owner" column="owner" {...head} />
+                <SortableHead label="Status" column="status" {...head} />
+                <SortableHead label="Triggers" column="triggers" {...head} />
+                <SortableHead label="DMs sent" column="dms" {...head} />
+                <SortableHead label="Created" column="created" {...head} />
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? 'opacity-60' : undefined}>

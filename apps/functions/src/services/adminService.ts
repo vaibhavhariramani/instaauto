@@ -81,6 +81,52 @@ export async function getDashboard() {
   });
 }
 
+// Computed-column sorts (accounts/automations/DMs) can't be expressed as a DB ORDER BY, so they
+// load every matching user (bounded here), compute metrics in bulk, sort in memory and slice the
+// page. Plain-column sorts stay fully in the database and are paginated there.
+const MAX_USERS_FOR_COMPUTED_SORT = 1000;
+
+const USER_LIST_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  createdAt: true,
+  isAdmin: true,
+  subscriptionPlan: true,
+  subscriptionStatus: true,
+  subscriptionCurrentPeriodStart: true,
+} as const;
+
+type UserListRow = Awaited<
+  ReturnType<typeof prisma.user.findMany<{ select: typeof USER_LIST_SELECT }>>
+>[number];
+
+async function userMetrics(users: UserListRow[]) {
+  const ids = users.map((u) => u.id);
+  const [accountRows, automationRows, dmCounts] = await Promise.all([
+    prisma.instagramAccount.groupBy({
+      by: ['userId'],
+      where: { userId: { in: ids }, status: InstagramAccountStatus.CONNECTED },
+      _count: { _all: true },
+    }),
+    prisma.automation.groupBy({
+      by: ['userId'],
+      where: { userId: { in: ids }, isActive: true },
+      _count: { _all: true },
+    }),
+    Promise.all(users.map((u) => dmUsageThisPeriod(u))),
+  ]);
+
+  const accounts = new Map(accountRows.map((r) => [r.userId, r._count._all]));
+  const automations = new Map(automationRows.map((r) => [r.userId, r._count._all]));
+  return users.map((u, i) => ({
+    user: u,
+    connectedAccountsCount: accounts.get(u.id) ?? 0,
+    activeAutomationsCount: automations.get(u.id) ?? 0,
+    dmsSentThisPeriod: dmCounts[i] ?? 0,
+  }));
+}
+
 export async function listUsers(query: AdminUserListQuery) {
   const where = {
     ...(query.plan === 'PAID'
@@ -97,50 +143,58 @@ export async function listUsers(query: AdminUserListQuery) {
         }
       : {}),
   };
+  const dir = query.sortDir;
+  const toDto = (r: Awaited<ReturnType<typeof userMetrics>>[number]) =>
+    toAdminUserListItemDto(r.user, {
+      connectedAccountsCount: r.connectedAccountsCount,
+      activeAutomationsCount: r.activeAutomationsCount,
+      dmsSentThisPeriod: r.dmsSentThisPeriod,
+    });
+
+  const computedKey = (
+    {
+      accounts: 'connectedAccountsCount',
+      automations: 'activeAutomationsCount',
+      dms: 'dmsSentThisPeriod',
+    } as const
+  )[query.sortBy as 'accounts' | 'automations' | 'dms'];
+
+  if (computedKey) {
+    const [all, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: MAX_USERS_FOR_COMPUTED_SORT,
+        select: USER_LIST_SELECT,
+      }),
+      prisma.user.count({ where }),
+    ]);
+    const rows = await userMetrics(all);
+    const sign = dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => sign * (a[computedKey] - b[computedKey]));
+    const pageRows = rows.slice((query.page - 1) * query.pageSize, query.page * query.pageSize);
+    return { items: pageRows.map(toDto), total, page: query.page, pageSize: query.pageSize };
+  }
+
+  const orderBy = {
+    name: { name: dir },
+    plan: { subscriptionPlan: dir },
+    status: { subscriptionStatus: dir },
+    joined: { createdAt: dir },
+  }[query.sortBy as 'name' | 'plan' | 'status' | 'joined'];
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [orderBy, { id: 'asc' }],
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        createdAt: true,
-        isAdmin: true,
-        subscriptionPlan: true,
-        subscriptionStatus: true,
-        subscriptionCurrentPeriodStart: true,
-      },
+      select: USER_LIST_SELECT,
     }),
     prisma.user.count({ where }),
   ]);
-
-  // _count with a filtered relation isn't directly expressible in one typed query across Prisma
-  // versions reliably - compute the two counts per-user explicitly instead, and the per-user DM
-  // usage (needs the billing-period math, not a plain count) the same way.
-  const items = await Promise.all(
-    users.map(async (u) => {
-      const [connectedAccountsCount, activeAutomationsCount, dmsSentThisPeriod] = await Promise.all(
-        [
-          prisma.instagramAccount.count({
-            where: { userId: u.id, status: InstagramAccountStatus.CONNECTED },
-          }),
-          prisma.automation.count({ where: { userId: u.id, isActive: true } }),
-          dmUsageThisPeriod(u),
-        ],
-      );
-      return toAdminUserListItemDto(u, {
-        connectedAccountsCount,
-        activeAutomationsCount,
-        dmsSentThisPeriod,
-      });
-    }),
-  );
-
-  return { items, total, page: query.page, pageSize: query.pageSize };
+  const rows = await userMetrics(users);
+  return { items: rows.map(toDto), total, page: query.page, pageSize: query.pageSize };
 }
 
 export async function listAutomations(query: AdminAutomationListQuery) {
@@ -154,17 +208,20 @@ export async function listAutomations(query: AdminAutomationListQuery) {
       }
     : {};
 
-  const orderBy =
-    query.sort === 'dms'
-      ? { totalDMsSent: 'desc' as const }
-      : query.sort === 'recent'
-        ? { createdAt: 'desc' as const }
-        : { totalTriggers: 'desc' as const };
+  const dir = query.sortDir;
+  const orderBy = {
+    name: { name: dir },
+    owner: { user: { email: dir } },
+    status: { isActive: dir },
+    triggers: { totalTriggers: dir },
+    dms: { totalDMsSent: dir },
+    created: { createdAt: dir },
+  }[query.sortBy];
 
   const [rows, total] = await Promise.all([
     prisma.automation.findMany({
       where,
-      orderBy,
+      orderBy: [orderBy, { id: 'asc' }],
       skip: (query.page - 1) * query.pageSize,
       take: query.pageSize,
       include: { user: { select: { id: true, email: true, name: true } } },

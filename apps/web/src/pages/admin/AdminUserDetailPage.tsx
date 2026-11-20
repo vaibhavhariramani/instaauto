@@ -1,30 +1,12 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 import { ArrowLeft, ExternalLink, Instagram, Zap } from 'lucide-react';
-import type { SubscriptionPlan } from '@instaauto/shared';
 import { PLAN_TIERS } from '@instaauto/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Table,
   TableBody,
@@ -33,87 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAdminUser, useAdminUpdateUserPlan } from '@/api/admin';
-import { extractErrorMessage } from '@/api/client';
+import { PlanChangeDialog } from '@/components/admin/PlanChangeDialog';
+import { useAdminUser } from '@/api/admin';
 import { ROUTES } from '@/constants/routes';
-
-function PlanChangeDialog({
-  userId,
-  currentPlan,
-  open,
-  onOpenChange,
-}: {
-  userId: string;
-  currentPlan: SubscriptionPlan;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  const [plan, setPlan] = useState<SubscriptionPlan>(currentPlan);
-  const [reason, setReason] = useState('');
-  const update = useAdminUpdateUserPlan(userId);
-
-  const onConfirm = async () => {
-    try {
-      await update.mutateAsync({ plan, reason: reason.trim() });
-      toast.success(`Plan changed to ${plan}`);
-      onOpenChange(false);
-      setReason('');
-    } catch (err) {
-      toast.error(extractErrorMessage(err));
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Change plan</DialogTitle>
-          <DialogDescription>
-            This is a manual override, not a real payment — it sets subscriptionStatus to ACTIVE
-            directly, with no Stripe charge involved. It's logged with your account, this reason,
-            and the before/after state.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">New plan</label>
-            <Select value={plan} onValueChange={(v) => setPlan(v as SubscriptionPlan)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="STARTER">{PLAN_TIERS.STARTER.label}</SelectItem>
-                <SelectItem value="PRO">{PLAN_TIERS.PRO.label}</SelectItem>
-                <SelectItem value="BUSINESS">{PLAN_TIERS.BUSINESS.label}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">
-              Reason <span className="text-muted-foreground">(required, min 10 characters)</span>
-            </label>
-            <Textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Manual comp for a support escalation - ticket #1234"
-              rows={3}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={onConfirm} disabled={reason.trim().length < 10 || update.isPending}>
-            {update.isPending ? 'Saving…' : `Set plan to ${PLAN_TIERS[plan].label}`}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export default function AdminUserDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -371,7 +275,9 @@ export default function AdminUserDetailPage() {
       )}
 
       <PlanChangeDialog
+        key={user.subscriptionPlan}
         userId={user.id}
+        userLabel={user.email}
         currentPlan={user.subscriptionPlan}
         open={planDialogOpen}
         onOpenChange={setPlanDialogOpen}

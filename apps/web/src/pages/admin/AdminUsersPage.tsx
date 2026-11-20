@@ -24,10 +24,27 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { useAdminUsers } from '@/api/admin';
+import { SortableHead } from '@/components/admin/SortableHead';
+import { nextSort, type SortDir } from '@/components/admin/sort';
+import { PlanChangeDialog } from '@/components/admin/PlanChangeDialog';
+import { useAdminUsers, type AdminUserSortBy } from '@/api/admin';
 import { ROUTES } from '@/constants/routes';
 
 const PAGE_SIZE = 25;
+const SORT_COLUMNS: readonly AdminUserSortBy[] = [
+  'name',
+  'plan',
+  'status',
+  'accounts',
+  'automations',
+  'dms',
+  'joined',
+];
+const TEXT_COLUMNS: readonly AdminUserSortBy[] = ['name', 'plan', 'status'];
+
+function isSortColumn(value: string | null): value is AdminUserSortBy {
+  return SORT_COLUMNS.includes(value as AdminUserSortBy);
+}
 
 const PLAN_BADGE: Record<SubscriptionPlan, 'secondary' | 'default' | 'success'> = {
   STARTER: 'secondary',
@@ -57,12 +74,39 @@ export default function AdminUsersPage() {
   const search = useDebouncedValue(searchInput, 300);
   const initialPlan = searchParams.get('plan');
   const [plan, setPlan] = useState<PlanFilter>(isPlanFilter(initialPlan) ? initialPlan : 'ALL');
+  const [planTarget, setPlanTarget] = useState<{
+    id: string;
+    label: string;
+    plan: SubscriptionPlan;
+  } | null>(null);
+
+  const urlSortBy = searchParams.get('sortBy');
+  const urlSortDir = searchParams.get('sortDir');
+  const sort = {
+    column: isSortColumn(urlSortBy) ? urlSortBy : ('joined' as AdminUserSortBy),
+    dir: (urlSortDir === 'asc' ? 'asc' : 'desc') as SortDir,
+  };
+  const onSort = (column: AdminUserSortBy) => {
+    const next = nextSort(column, sort, TEXT_COLUMNS);
+    setPage(1);
+    setSearchParams(
+      (prev) => {
+        prev.set('sortBy', next.column);
+        prev.set('sortDir', next.dir);
+        return prev;
+      },
+      { replace: true },
+    );
+  };
+  const head = { activeColumn: sort.column, dir: sort.dir, onSort };
 
   const { data, isLoading, isFetching } = useAdminUsers({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
     plan: plan === 'ALL' ? undefined : plan,
+    sortBy: sort.column,
+    sortDir: sort.dir,
   });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
@@ -130,13 +174,14 @@ export default function AdminUsersPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Accounts</TableHead>
-                <TableHead>Automations</TableHead>
-                <TableHead>DMs this period</TableHead>
-                <TableHead>Joined</TableHead>
+                <SortableHead label="User" column="name" {...head} />
+                <SortableHead label="Plan" column="plan" {...head} />
+                <SortableHead label="Status" column="status" {...head} />
+                <SortableHead label="Accounts" column="accounts" {...head} />
+                <SortableHead label="Automations" column="automations" {...head} />
+                <SortableHead label="DMs this period" column="dms" {...head} />
+                <SortableHead label="Joined" column="joined" {...head} />
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className={isFetching ? 'opacity-60' : undefined}>
@@ -173,12 +218,37 @@ export default function AdminUsersPage() {
                   <TableCell className="text-sm text-muted-foreground">
                     {new Date(u.createdAt).toLocaleDateString()}
                   </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPlanTarget({ id: u.id, label: u.email, plan: u.subscriptionPlan });
+                      }}
+                    >
+                      Change plan
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
       </Card>
+
+      {planTarget && (
+        <PlanChangeDialog
+          key={planTarget.id}
+          userId={planTarget.id}
+          userLabel={planTarget.label}
+          currentPlan={planTarget.plan}
+          open
+          onOpenChange={(open) => {
+            if (!open) setPlanTarget(null);
+          }}
+        />
+      )}
 
       {data && data.total > PAGE_SIZE && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">

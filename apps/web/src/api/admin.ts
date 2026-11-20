@@ -20,11 +20,17 @@ export function useAdminDashboard() {
   });
 }
 
+export type AdminUserSortBy =
+  'name' | 'plan' | 'status' | 'accounts' | 'automations' | 'dms' | 'joined';
+export type AdminAutomationSortBy = 'name' | 'owner' | 'status' | 'triggers' | 'dms' | 'created';
+
 export interface AdminUsersParams {
   page: number;
   pageSize: number;
   search?: string;
   plan?: SubscriptionPlan | 'PAID';
+  sortBy?: AdminUserSortBy;
+  sortDir?: 'asc' | 'desc';
 }
 
 export function useAdminUsers(params: AdminUsersParams) {
@@ -55,7 +61,8 @@ export interface AdminAutomationsParams {
   page: number;
   pageSize: number;
   search?: string;
-  sort?: 'triggers' | 'dms' | 'recent';
+  sortBy?: AdminAutomationSortBy;
+  sortDir?: 'asc' | 'desc';
 }
 
 export function useAdminAutomations(params: AdminAutomationsParams) {
